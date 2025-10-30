@@ -74,10 +74,13 @@ FILE *g_log = stderr;
   }
 }
 
+const char* g_last_z3_call = "(none)";
+
 void handle_z3_error(Z3_context c [[maybe_unused]], Z3_error_code e) {
-  assert(c == g_context && "Z3 error in unknown context");
-  std::cerr << Z3_get_error_msg(g_context, e) << std::endl;
-  assert(!"Z3 error");
+  std::fprintf(g_log, "[Z3] ERROR raised at call=%s code=%d msg=%s\n",
+               g_last_z3_call, e, Z3_get_error_msg(c, e));
+  std::fflush(g_log);
+  // assert(!"Z3 error");
 }
 #endif
 
@@ -490,8 +493,8 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
 //  } else {
 //    fprintf(g_log, "Can't find a diverging input at this point\n");
 //  }
-//  fflush(g_log);
-//
+  fflush(g_log);
+
   Z3_solver_pop(g_context, g_solver, 1);
 
   /* Assert the actual path constraint */
