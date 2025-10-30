@@ -190,6 +190,8 @@ void _sym_initialize(void) {
   g_solver = g_enhanced_solver; // for QSYM-internal use
   g_expr_builder = g_config.pruning ? PruneExprBuilder::create()
                                     : SymbolicExprBuilder::create();
+
+  std::cerr << "SymCC QSYM backend initialized\n";
 }
 
 SymExpr _sym_build_integer(uint64_t value, uint8_t bits) {
@@ -325,6 +327,11 @@ void _sym_push_path_constraint(SymExpr constraint, int taken,
 }
 
 SymExpr _sym_get_input_byte(size_t offset, uint8_t value) {
+  g_enhanced_solver->pushInputByte(offset, value);
+  return registerExpression(g_expr_builder->createRead(offset));
+}
+
+SymExpr _sym_get_input_byte_with_prefix(const char * prefix, size_t offset, uint8_t value) {
   g_enhanced_solver->pushInputByte(offset, value);
   return registerExpression(g_expr_builder->createRead(offset));
 }
