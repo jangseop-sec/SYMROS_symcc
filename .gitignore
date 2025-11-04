@@ -41,6 +41,6 @@ TAGS
 compile_commands.json
 .clangd
 .cache
-
+.vscode
 # Build directories
 *build*
