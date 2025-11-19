@@ -281,7 +281,7 @@ private:
   }
 
   /// Generate code that makes the solver try an alternative value for V.
-  void tryAlternative(llvm::IRBuilder<> &IRB, llvm::Value *V);
+  void tryAlternative(llvm::IRBuilder<> &IRB, llvm::Value *V, llvm::Instruction &I);
 
   /// Helper to use a pointer to a host object as integer (truncating!).
   ///

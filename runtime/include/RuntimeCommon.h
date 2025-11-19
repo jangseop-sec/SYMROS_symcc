@@ -180,12 +180,16 @@ SymExpr _sym_get_return_expression(void);
  */
 void _sym_push_path_constraint(nullable SymExpr constraint, int taken,
                                uintptr_t site_id);
+void _sym_push_path_constraint_with_loc(nullable SymExpr constraint, int taken,
+                               uintptr_t site_id, const char * filename, int line);
 SymExpr _sym_get_input_byte(size_t offset, uint8_t concrete_value);
 SymExpr _sym_get_input_byte_with_prefix(const char * prefix, size_t offset, uint8_t concrete_value);
 void _sym_make_symbolic(const void *data, size_t byte_length,
                         size_t input_offset);
 void _sym_make_symbolic_with_prefix(const void *data, size_t byte_length,
                         size_t input_offset, const char * prefix);
+void _sym_localize_branch_instruction(const char * filename, int line_number);
+
 /*
  * Memory management
  */
@@ -228,6 +232,8 @@ void _sym_collect_garbage(void);
  */
 void symcc_make_symbolic(const void *start, size_t byte_length);
 void symcc_make_symbolic_with_prefix(const void *start, size_t byte_length, const char * prefix);
+void symcc_reset_constraints();
+
 typedef void (*TestCaseHandler)(const void *, size_t);
 void symcc_set_test_case_handler(TestCaseHandler handler);
 

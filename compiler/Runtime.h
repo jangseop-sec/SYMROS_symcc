@@ -80,6 +80,9 @@ struct Runtime {
   SymFnT notifyCall{};
   SymFnT notifyRet{};
   SymFnT notifyBasicBlock{};
+  // branch instrunction localization
+  SymFnT localizeBranchInstruction{};
+  SymFnT pushPathConstraintWithLoc{};
 
   /// Mapping from icmp predicates to the functions that build the corresponding
   /// symbolic expressions.

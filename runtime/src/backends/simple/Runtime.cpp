@@ -449,6 +449,65 @@ Z3_ast _sym_build_bool_to_bit(Z3_ast expr) {
                         _sym_build_integer(0, 1));
 }
 
+void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
+                               uintptr_t site_id [[maybe_unused]], const char * filename, int line) {
+  if (constraint == nullptr)
+    return;
+
+  constraint = Z3_simplify(g_context, constraint);
+  Z3_inc_ref(g_context, constraint);
+
+  /* Check the easy cases first: if simplification reduced the constraint to
+     "true" or "false", there is no point in trying to solve the negation or *
+     pushing the constraint to the solver... */
+
+  if (Z3_is_eq_ast(g_context, constraint, g_true)) {
+    assert(taken && "We have taken an impossible branch");
+    Z3_dec_ref(g_context, constraint);
+    return;
+  }
+
+  if (Z3_is_eq_ast(g_context, constraint, g_false)) {
+    assert(!taken && "We have taken an impossible branch");
+    Z3_dec_ref(g_context, constraint);
+    return;
+  }
+
+  /* Generate a solution for the alternative */
+  Z3_ast not_constraint =
+      Z3_simplify(g_context, Z3_mk_not(g_context, constraint));
+  Z3_inc_ref(g_context, not_constraint);
+
+  Z3_solver_push(g_context, g_solver);
+  Z3_solver_assert(g_context, g_solver, taken ? not_constraint : constraint);
+
+  fprintf(g_log, "Trying to solve:\nLocation:%s,%d\nSMT:%s\n====end of smt====\n",
+          filename, line, Z3_solver_to_string(g_context, g_solver));
+
+//  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
+//  if (feasible == Z3_L_TRUE) {
+//    Z3_model model = Z3_solver_get_model(g_context, g_solver);
+//    Z3_model_inc_ref(g_context, model);
+//    fprintf(g_log, "Found diverging input:\n%s\n",
+//            Z3_model_to_string(g_context, model));
+//    Z3_model_dec_ref(g_context, model);
+//  } else {
+//    fprintf(g_log, "Can't find a diverging input at this point\n");
+//  }
+  fflush(g_log);
+
+  Z3_solver_pop(g_context, g_solver, 1);
+
+  /* Assert the actual path constraint */
+  Z3_ast newConstraint = (taken ? constraint : not_constraint);
+  Z3_inc_ref(g_context, newConstraint);
+  Z3_solver_assert(g_context, g_solver, newConstraint);
+//  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
+//         "Asserting infeasible path constraint");
+  Z3_dec_ref(g_context, constraint);
+  Z3_dec_ref(g_context, not_constraint);
+}
+
 void _sym_push_path_constraint(Z3_ast constraint, int taken,
                                uintptr_t site_id [[maybe_unused]]) {
   if (constraint == nullptr)
@@ -505,6 +564,11 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
 //         "Asserting infeasible path constraint");
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
+}
+
+void _sym_localize_branch_instruction(const char * filename, int line_number) {
+  
+  fprintf(g_log, "[symcc] Localizing branch instruction at %s:%d\n", filename, line_number);
 }
 
 SymExpr _sym_concat_helper(SymExpr a, SymExpr b) {
@@ -589,4 +653,8 @@ void symcc_set_test_case_handler(TestCaseHandler) {
   fprintf(
       g_log,
       "Warning: test-case handlers aren't supported in the simple backend\n");
+}
+
+void symcc_reset_constraints() {
+  Z3_solver_reset(g_context, g_solver);
 }

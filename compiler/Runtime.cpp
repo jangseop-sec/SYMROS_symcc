@@ -40,6 +40,7 @@ Runtime::Runtime(Module &M) {
   auto *ptrT = IRB.getInt8Ty()->getPointerTo();
   auto *int8T = IRB.getInt8Ty();
   auto *int1T = IRB.getInt1Ty();
+  auto *int32T = IRB.getInt32Ty();
   auto *voidT = IRB.getVoidTy();
 
   buildInteger = import(M, "_sym_build_integer", ptrT, IRB.getInt64Ty(), int8T);
@@ -73,7 +74,9 @@ Runtime::Runtime(Module &M) {
       import(M, "_sym_concat_helper", ptrT, ptrT,
              ptrT); // doesn't follow naming convention for historic reasons
   pushPathConstraint =
-      import(M, "_sym_push_path_constraint", voidT, ptrT, int1T, intPtrType);
+      import(M, "_sym_push_path_constraint_with_loc", voidT, ptrT, int1T, intPtrType);
+  pushPathConstraintWithLoc =
+      import(M, "_sym_push_path_constraint_with_loc", voidT, ptrT, int1T, intPtrType, ptrT, int32T);
 
   // Overflow arithmetic
   buildAddOverflow =
@@ -102,6 +105,8 @@ Runtime::Runtime(Module &M) {
       import(M, "_sym_get_parameter_expression", ptrT, int8T);
   setReturnExpression = import(M, "_sym_set_return_expression", voidT, ptrT);
   getReturnExpression = import(M, "_sym_get_return_expression", ptrT);
+
+  localizeBranchInstruction = import(M, "_sym_localize_branch_instruction", voidT, ptrT, int32T);
 
 #define LOAD_BINARY_OPERATOR_HANDLER(constant, name)                           \
   binaryOperatorHandlers[Instruction::constant] =                              \
