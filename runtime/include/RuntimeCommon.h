@@ -77,6 +77,38 @@ SymExpr _sym_build_funnel_shift_right(SymExpr a, SymExpr b, SymExpr c);
 SymExpr _sym_build_abs(SymExpr expr);
 
 /*
+ * arithmetic for Int
+ */
+SymExpr _sym_build_add_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_sub_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_mul_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_and_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_or_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_unsigned_div_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_signed_div_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_unsigned_mod_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_signed_rem_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_unsigned_rem_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_signed_less_than_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_signed_less_equal_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_signed_greater_than_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_signed_greater_equal_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_unsigned_less_than_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_unsigned_less_equal_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_unsigned_greater_than_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_unsigned_greater_equal_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_equal_int(SymExpr a, SymExpr b);
+
+SymExpr _sym_build_xor_int(SymExpr a, SymExpr b);
+SymExpr _sym_build_bool_xor_int(SymExpr a, SymExpr b);
+
+
+/*
  * Arithmetic with overflow
  */
 SymExpr _sym_build_add_overflow(SymExpr a, SymExpr b, bool is_signed,

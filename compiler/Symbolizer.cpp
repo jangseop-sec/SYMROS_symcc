@@ -398,6 +398,18 @@ void Symbolizer::visitBinaryOperator(BinaryOperator &I) {
   // Binary operators propagate into the symbolic expression.
 
   IRBuilder<> IRB(&I);
+  // TODO check both opcode and operand types?
+  // TODO how tracking each numeric symbolc value? getoperand automatically convert to bitvec...
+  // if (I.getOperand(0)->getType()->isIntegerTy() && !I.getOperand(0)->getType()->isIntegerTy(1)) {
+  //   SymFnT handler = runtime.binaryOperatorHandlersForInt.at(I.getOpcode());
+  //   if (!handler) {
+  //     errs() << "Unable to handle integer binary operator " << I << '\n';
+  //   }
+  //   auto runtimeCall =
+  //       buildRuntimeCall(IRB, handler, {I.getOperand(0), I.getOperand(1)});
+  //   registerSymbolicComputation(runtimeCall, &I);
+  // } 
+
   SymFnT handler = runtime.binaryOperatorHandlers.at(I.getOpcode());
 
   // Special case: the run-time library distinguishes between "and" and "or"

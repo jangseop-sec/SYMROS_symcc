@@ -132,8 +132,26 @@ Runtime::Runtime(Module &M) {
   LOAD_BINARY_OPERATOR_HANDLER(FMul, fp_mul)
   LOAD_BINARY_OPERATOR_HANDLER(FDiv, fp_div)
   LOAD_BINARY_OPERATOR_HANDLER(FRem, fp_rem)
-
 #undef LOAD_BINARY_OPERATOR_HANDLER
+
+#define LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(constant, name)                   \
+  binaryOperatorHandlersForInt[Instruction::constant] =                        \
+      import(M, "_sym_build_" #name "_int", ptrT, ptrT, ptrT);                 \
+  binaryOperatorHandlersForFloat[Instruction::constant] =                      \
+      import(M, "_sym_build_" #name "_float", ptrT, ptrT, ptrT);
+
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(Add, add)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(Sub, sub)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(Mul, mul)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(UDiv, unsigned_div)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(SDiv, signed_div)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(URem, unsigned_rem)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(SRem, signed_rem)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(And, and)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(Or, or)
+  LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM(Xor, xor)
+
+#undef LOAD_BINARY_OPERATOR_HANDLER_FOR_NUM
 
 #define LOAD_UNARY_OPERATOR_HANDLER(constant, name)                            \
   unaryOperatorHandlers[Instruction::constant] =                               \

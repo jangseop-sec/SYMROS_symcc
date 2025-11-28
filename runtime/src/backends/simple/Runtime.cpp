@@ -279,6 +279,49 @@ DEF_BINARY_EXPR_BUILDER(float_ordered_equal, fpa_eq)
 
 #undef DEF_BINARY_EXPR_BUILDER
 
+#define DEF_INT_NARY_EXPR_BUILDER(name, z3_func)                              \
+  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                         \
+    Z3_ast args[2] = { a, b };                                                  \
+    return registerExpression(Z3_mk_##z3_func(g_context, 2, args));                     \
+  }
+
+DEF_INT_NARY_EXPR_BUILDER(add, add)
+DEF_INT_NARY_EXPR_BUILDER(sub, sub)
+DEF_INT_NARY_EXPR_BUILDER(mul, mul)
+DEF_INT_NARY_EXPR_BUILDER(and, and)
+DEF_INT_NARY_EXPR_BUILDER(or, or)
+
+#undef DEF_INT_NARY_EXPR_BUILDER
+
+#define DEF_INT_BINARY_EXPR_BUILDER(name, z3_func)                              \
+  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                       \
+    return registerExpression(Z3_mk_##z3_func(g_context, a, b));                \
+  }
+
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_div, div)
+DEF_INT_BINARY_EXPR_BUILDER(signed_div, div)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_mod, mod)
+DEF_INT_BINARY_EXPR_BUILDER(signed_rem, rem)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_rem, rem)
+
+DEF_INT_BINARY_EXPR_BUILDER(signed_less_than, lt)
+DEF_INT_BINARY_EXPR_BUILDER(signed_less_equal, le)
+DEF_INT_BINARY_EXPR_BUILDER(signed_greater_than, gt)
+DEF_INT_BINARY_EXPR_BUILDER(signed_greater_equal, ge)
+
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_than, lt)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_equal, le)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_than, gt)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_equal, ge)
+
+DEF_INT_BINARY_EXPR_BUILDER(equal, eq)
+
+DEF_INT_BINARY_EXPR_BUILDER(xor, xor)
+DEF_INT_BINARY_EXPR_BUILDER(bool_xor, xor)
+
+#undef DEF_INT_BINARY_EXPR_BUILDER
+#define DEF_INT_
+
 Z3_ast _sym_build_ite(Z3_ast cond, Z3_ast a, Z3_ast b) {
   return registerExpression(Z3_mk_ite(g_context, cond, a, b));
 }

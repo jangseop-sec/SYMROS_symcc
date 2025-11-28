@@ -91,10 +91,14 @@ struct Runtime {
   /// Mapping from binary operators to the functions that build the
   /// corresponding symbolic expressions.
   std::array<SymFnT, llvm::Instruction::BinaryOpsEnd> binaryOperatorHandlers{};
+  std::array<SymFnT, llvm::Instruction::BinaryOpsEnd> binaryOperatorHandlersForInt{};
+  std::array<SymFnT, llvm::Instruction::BinaryOpsEnd> binaryOperatorHandlersForFloat{};
 
   /// Mapping from unary operators to the functions that build the
   /// corresponding symbolic expressions.
   std::array<SymFnT, llvm::Instruction::UnaryOpsEnd> unaryOperatorHandlers{};
+  std::array<SymFnT, llvm::Instruction::UnaryOpsEnd> unaryOperatorHandlersForInt{};
+  std::array<SymFnT, llvm::Instruction::UnaryOpsEnd> unaryOperatorHandlersForFloat{};
 };
 
 bool isInterceptedFunction(const llvm::Function &f);
