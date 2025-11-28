@@ -22,6 +22,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <variant>
+#include <iostream>
 
 #include "Config.h"
 #include "GarbageCollection.h"
@@ -464,9 +465,23 @@ void _sym_make_symbolic(const void *data, size_t byte_length,
                         size_t input_offset) {
   ReadWriteShadow shadow(data, byte_length);
   const uint8_t *data_bytes = reinterpret_cast<const uint8_t *>(data);
+  // TODO type-aware symbolizer?
   std::generate(shadow.begin(), shadow.end(), [&, i = 0]() mutable {
     return _sym_get_input_byte(input_offset++, data_bytes[i++]);
   });
+}
+
+void _sym_make_symbolic_with_type(const void *data, size_t byte_length, size_t input_offset, 
+                                  const char *prefix, const char *type_name) {
+  ReadWriteShadow shadow(data, byte_length);
+  const uint8_t *data_bytes = reinterpret_cast<const uint8_t *>(data);
+  std::generate(shadow.begin(), shadow.end(), [&, i = 0]() mutable {
+    return _sym_get_input_byte(input_offset++, data_bytes[i++]);
+  });
+
+  if (!strcmp(type_name, "int")) {
+    _sym_get_integer(prefix);
+  }
 }
 
 void _sym_make_symbolic_with_prefix(const void *data, size_t byte_length,
@@ -486,6 +501,17 @@ void symcc_make_symbolic(const void *start, size_t byte_length) {
 
   static size_t inputOffset = 0; // track the offset across calls
   _sym_make_symbolic(start, byte_length, inputOffset);
+  inputOffset += byte_length;
+}
+
+void symcc_make_symbolic_with_type(const void *start, size_t byte_length, 
+                                  const char *prefix, const char * type_name) {
+  if (!std::holds_alternative<MemoryInput>(g_config.input))
+    throw std::runtime_error{"Calls to symcc_make_symbolic aren't allowed when "
+                             "SYMCC_MEMORY_INPUT isn't set"};
+
+  static size_t inputOffset = 0; // track the offset across calls
+  _sym_make_symbolic_with_type(start, byte_length, inputOffset, prefix, type_name);
   inputOffset += byte_length;
 }
 

@@ -94,6 +94,17 @@ SymExpr build_variable(const char *name, uint8_t bits) {
   return result;
 }
 
+SymExpr build_variable_int(const char *name) {
+  std::cout << "build_variable_int: " << name << std::endl;
+  Z3_symbol sym = Z3_mk_string_symbol(g_context, name);
+  auto *sort = Z3_mk_int_sort(g_context);
+  Z3_inc_ref(g_context, (Z3_ast)sort);
+  Z3_ast result = Z3_mk_const(g_context, sym, sort);
+  Z3_inc_ref(g_context, result);
+  Z3_dec_ref(g_context, (Z3_ast)sort);
+  return result;
+}
+
 /// The set of all expressions we have ever passed to client code.
 std::set<SymExpr> allocatedExpressions;
 
@@ -198,6 +209,10 @@ Z3_ast _sym_get_input_byte(size_t offset, uint8_t) {
   return var;
 }
 
+Z3_ast _sym_get_integer(const char *name) {
+  return build_variable_int(name);
+}
+
 Z3_ast _sym_get_input_byte_with_prefix(const char * prefix, size_t offset, uint8_t) {
   static std::vector<SymExpr> stdinBytes;
 
@@ -221,6 +236,9 @@ Z3_ast _sym_build_bool(bool value) { return value ? g_true : g_false; }
 Z3_ast _sym_build_neg(Z3_ast expr) {
   return registerExpression(Z3_mk_bvneg(g_context, expr));
 }
+
+#define STRINGIFY2(x) #x
+#define STRINGIFY(x) STRINGIFY2(x)
 
 #define DEF_BINARY_EXPR_BUILDER(name, z3_name)                                 \
   SymExpr _sym_build_##name(SymExpr a, SymExpr b) {                            \
