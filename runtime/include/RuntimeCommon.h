@@ -191,6 +191,7 @@ SymExpr _sym_build_float_to_signed_integer(SymExpr expr, uint8_t bits);
 SymExpr _sym_build_float_to_unsigned_integer(SymExpr expr, uint8_t bits);
 SymExpr _sym_build_bool_to_bit(nullable SymExpr expr);
 SymExpr _sym_build_bit_to_bool(nullable SymExpr expr);
+Z3_ast _sym_build_bits_to_int(Z3_ast expr, int is_signed);
 
 /*
  * Bit-array helpers

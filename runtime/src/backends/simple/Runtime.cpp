@@ -279,10 +279,13 @@ DEF_BINARY_EXPR_BUILDER(float_ordered_equal, fpa_eq)
 
 #undef DEF_BINARY_EXPR_BUILDER
 
-#define DEF_INT_NARY_EXPR_BUILDER(name, z3_func)                              \
-  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                         \
-    Z3_ast args[2] = { a, b };                                                  \
-    return registerExpression(Z3_mk_##z3_func(g_context, 2, args));                     \
+// TODO handling signed/unsigned both
+#define DEF_INT_NARY_EXPR_BUILDER(name, z3_func)                               \
+  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                      \
+    auto a_int = _sym_build_bits_to_int(a, 0);                                 \
+    auto b_int = _sym_build_bits_to_int(b, 0);                                 \
+    Z3_ast args[2] = { a_int, b_int };                                         \
+    return registerExpression(Z3_mk_##z3_func(g_context, 2, args));            \
   }
 
 DEF_INT_NARY_EXPR_BUILDER(add, add)
@@ -293,31 +296,33 @@ DEF_INT_NARY_EXPR_BUILDER(or, or)
 
 #undef DEF_INT_NARY_EXPR_BUILDER
 
-#define DEF_INT_BINARY_EXPR_BUILDER(name, z3_func)                              \
-  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                       \
-    return registerExpression(Z3_mk_##z3_func(g_context, a, b));                \
+#define DEF_INT_BINARY_EXPR_BUILDER(name, z3_func, is_signed)                              \
+  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {        \
+    auto a_int = _sym_build_bits_to_int(a, is_signed);                          \
+    auto b_int = _sym_build_bits_to_int(b, is_signed);                          \
+    return registerExpression(Z3_mk_##z3_func(g_context, a_int, b_int));        \
   }
 
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_div, div)
-DEF_INT_BINARY_EXPR_BUILDER(signed_div, div)
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_mod, mod)
-DEF_INT_BINARY_EXPR_BUILDER(signed_rem, rem)
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_rem, rem)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_div, div, 0)
+DEF_INT_BINARY_EXPR_BUILDER(signed_div, div, 1)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_mod, mod, 0)
+DEF_INT_BINARY_EXPR_BUILDER(signed_rem, rem, 1)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_rem, rem, 0)
 
-DEF_INT_BINARY_EXPR_BUILDER(signed_less_than, lt)
-DEF_INT_BINARY_EXPR_BUILDER(signed_less_equal, le)
-DEF_INT_BINARY_EXPR_BUILDER(signed_greater_than, gt)
-DEF_INT_BINARY_EXPR_BUILDER(signed_greater_equal, ge)
+DEF_INT_BINARY_EXPR_BUILDER(signed_less_than, lt, 1)
+DEF_INT_BINARY_EXPR_BUILDER(signed_less_equal, le, 1)
+DEF_INT_BINARY_EXPR_BUILDER(signed_greater_than, gt, 1)
+DEF_INT_BINARY_EXPR_BUILDER(signed_greater_equal, ge, 1)
 
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_than, lt)
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_equal, le)
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_than, gt)
-DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_equal, ge)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_than, lt, 0)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_less_equal, le, 0)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_than, gt, 0)
+DEF_INT_BINARY_EXPR_BUILDER(unsigned_greater_equal, ge, 0)
 
-DEF_INT_BINARY_EXPR_BUILDER(equal, eq)
+DEF_INT_BINARY_EXPR_BUILDER(equal, eq, 0)
 
-DEF_INT_BINARY_EXPR_BUILDER(xor, xor)
-DEF_INT_BINARY_EXPR_BUILDER(bool_xor, xor)
+DEF_INT_BINARY_EXPR_BUILDER(xor, xor, 0)
+DEF_INT_BINARY_EXPR_BUILDER(bool_xor, xor, 0)
 
 #undef DEF_INT_BINARY_EXPR_BUILDER
 #define DEF_INT_
@@ -508,6 +513,11 @@ Z3_ast _sym_build_bool_to_bit(Z3_ast expr) {
     return nullptr;
   return _sym_build_ite(expr, _sym_build_integer(1, 1),
                         _sym_build_integer(0, 1));
+}
+
+Z3_ast _sym_build_bits_to_int(Z3_ast expr, int is_signed) {
+  return registerExpression(Z3_mk_bv2int(
+      g_context, expr, is_signed));
 }
 
 void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
