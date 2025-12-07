@@ -113,6 +113,7 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-z,nodelete")
 # get linker errors.
 add_library(SymCC MODULE
   compiler/Symbolizer.cpp
+  compiler/Overflow.cpp
   compiler/Pass.cpp
   compiler/Runtime.cpp
   compiler/Main.cpp)

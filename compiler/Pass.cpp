@@ -33,6 +33,7 @@
 
 #include "Runtime.h"
 #include "Symbolizer.h"
+#include "Overflow.h"
 
 using namespace llvm;
 
@@ -46,6 +47,7 @@ using namespace llvm;
 #endif
 
 char SymbolizeLegacyPass::ID = 0;
+char OverflowCheckerLegacyPass::ID = 0;
 
 namespace {
 
@@ -207,6 +209,16 @@ bool instrumentFunction(Function &F) {
 
 } // namespace
 
+
+bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
+  // OverflowChecker checker;
+  errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
+  for (auto &I : instructions(F)) {
+    errs() << "[OverflowCheckerLegacyPass] visiting instruction" << I.getName() << "\n";
+  }
+  return false;
+}
+
 bool SymbolizeLegacyPass::doInitialization(Module &M) {
   return instrumentModule(M);
 }
@@ -217,12 +229,35 @@ bool SymbolizeLegacyPass::runOnFunction(Function &F) {
 
 #if LLVM_VERSION_MAJOR >= 13
 
+PreservedAnalyses OverflowCheckerPass::run(Function &F,
+                                            FunctionAnalysisManager &) {
+  errs() << "[OverflowCheckerPass] visiting function: " << F.getName() << "\n";
+  OverflowChecker checker(*F.getParent()); 
+  
+  std::vector<Instruction *> allInstructions;
+  for (auto &I : instructions(F)) {
+    allInstructions.push_back(&I);
+  }
+
+  for (auto *instPtr : allInstructions)
+    checker.visit(instPtr);
+  return PreservedAnalyses::none();
+}
+
+PreservedAnalyses OverflowCheckerPass::run(Module &,
+                                            ModuleAnalysisManager &) {
+  errs() << "[OverflowCheckerPass] visiting module\n";                                            
+  return PreservedAnalyses::all();
+}
+
 PreservedAnalyses SymbolizePass::run(Function &F, FunctionAnalysisManager &) {
+  errs() << "Symbolizing function " << F.getName() << "\n";
   return instrumentFunction(F) ? PreservedAnalyses::none()
                                : PreservedAnalyses::all();
 }
 
 PreservedAnalyses SymbolizePass::run(Module &M, ModuleAnalysisManager &) {
+  errs() << "Symbolizing module\n";
   return instrumentModule(M) ? PreservedAnalyses::none()
                              : PreservedAnalyses::all();
 }
