@@ -4,8 +4,10 @@ using namespace llvm;
 
 void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
 
-  if (!I.getOperand(0)->getType()->isIntegerTy() || !I.getOperand(1)->getType()->isIntegerTy()) 
+  if (!I.getOperand(0)->getType()->isIntegerTy(32) || !I.getOperand(1)->getType()->isIntegerTy(32)) 
     return;
+
+  if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap()) return;
 
   llvm::Value* overflowCond = nullptr;
   if (I.getOpcode() == Instruction::Add) {
