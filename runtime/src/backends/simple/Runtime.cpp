@@ -520,7 +520,7 @@ Z3_ast _sym_build_bits_to_int(Z3_ast expr, int is_signed) {
 }
 
 void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
-                               uintptr_t site_id [[maybe_unused]], const char * filename, int line) {
+                               uintptr_t site_id [[maybe_unused]], const char * filename, int line, int col) {
   if (constraint == nullptr)
     return;
 
@@ -551,8 +551,8 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   Z3_solver_push(g_context, g_solver);
   Z3_solver_assert(g_context, g_solver, taken ? not_constraint : constraint);
 
-  fprintf(g_log, "Trying to solve:\nLocation:%s,%d\nSMT:%s\n====end of smt====\n",
-          filename, line, Z3_solver_to_string(g_context, g_solver));
+  fprintf(g_log, "Trying to solve:\nLocation:%s,%d,%d,%d\nSMT:%s\n====end of smt====\n",
+          filename, line, col, taken, Z3_solver_to_string(g_context, g_solver));
 
 //  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
 //  if (feasible == Z3_L_TRUE) {

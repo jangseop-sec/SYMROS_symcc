@@ -446,6 +446,7 @@ void Symbolizer::visitSelectInst(SelectInst &I) {
   // locage branch instrunction
   std::string filename;
   int Line = -1;
+  int Col = -1;
   if (auto DL = I.getDebugLoc()) {
     if (auto Loc = DL.get()) { 
       while (Loc && Loc->getInlinedAt()) {
@@ -454,17 +455,20 @@ void Symbolizer::visitSelectInst(SelectInst &I) {
 
       filename = Loc->getFilename().str();
       Line = Loc->getLine();
+      Col = Loc->getColumn();
     }
   }
   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
   llvm::Value *lineVal = IRB.getInt32(Line);
+  llvm::Value *colVal = IRB.getInt32(Col);
   
   auto runtimeCall = buildRuntimeCall(IRB, runtime.pushPathConstraintWithLoc,
                                       {{I.getCondition(), true},
                                        {I.getCondition(), false},
                                        {getTargetPreferredInt(&I), false},
                                        {filenameVal, false},
-                                       {lineVal, false}});
+                                       {lineVal, false},
+                                       {colVal, false}});
   registerSymbolicComputation(runtimeCall);
   if (getSymbolicExpression(I.getTrueValue()) ||
       getSymbolicExpression(I.getFalseValue())) {
@@ -515,6 +519,7 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
   // branch instrunction localization
   std::string filename;
   int Line = -1;
+  int Col = -1;
 
   if (auto DL = I.getDebugLoc()) {
     if (auto Loc = DL.get()) { 
@@ -524,11 +529,13 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
 
       filename = Loc->getFilename().str();
       Line = Loc->getLine();
+      Col = Loc->getColumn();
     }
   }
 
   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
   llvm::Value *lineVal = IRB.getInt32(Line);
+  llvm::Value *colVal = IRB.getInt32(Col);
   // if (filename.find("/libcxx_symcc_install") == std::string::npos) {
   //   IRB.CreateCall(runtime.localizeBranchInstruction,
   //                 {filenameVal, lineVal});
@@ -539,7 +546,8 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
                                        {I.getCondition(), false},
                                        {getTargetPreferredInt(&I), false},
                                        {filenameVal, false},
-                                       {lineVal, false}});
+                                       {lineVal, false},
+                                       {colVal, false}});
   registerSymbolicComputation(runtimeCall);
 }
 
@@ -961,6 +969,7 @@ void Symbolizer::visitSwitchInst(SwitchInst &I) {
   // Locate the switch instruction
   std::string filename;
   int Line = -1;
+  int Col = -1;
 
   if (auto DL = I.getDebugLoc()) {
     if (auto Loc = DL.get()) { 
@@ -970,11 +979,13 @@ void Symbolizer::visitSwitchInst(SwitchInst &I) {
 
       filename = Loc->getFilename().str();
       Line = Loc->getLine();
+      Col = Loc->getColumn();
     }
   }
 
   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
   llvm::Value *lineVal = IRB.getInt32(Line);
+  llvm::Value *colVal = IRB.getInt32(Col);
 
   // Build a check whether we have a symbolic condition, to be used later.
   auto *haveSymbolicCondition = IRB.CreateICmpNE(
@@ -991,7 +1002,7 @@ void Symbolizer::visitSwitchInst(SwitchInst &I) {
         {conditionExpr, createValueExpression(caseHandle.getCaseValue(), IRB)});
     IRB.CreateCall(runtime.pushPathConstraintWithLoc,
                    {caseConstraint, caseTaken, getTargetPreferredInt(&I), 
-                    filenameVal, lineVal});
+                    filenameVal, lineVal, colVal});
   }
 }
 
@@ -1165,6 +1176,7 @@ void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
     // locate the instruction
     std::string filename;
     int Line = -1;
+    int Col = -1;
 
     if (auto DL = I.getDebugLoc()) {
       if (auto Loc = DL.get()) { 
@@ -1174,14 +1186,16 @@ void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
 
         filename = Loc->getFilename().str();
         Line = Loc->getLine();
+        Col = Loc->getColumn();
       }
     }
     llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
     llvm::Value *lineVal = IRB.getInt32(Line);
+    llvm::Value *colVal = IRB.getInt32(Col);
 
     auto *pushAssertion = IRB.CreateCall(
         runtime.pushPathConstraintWithLoc,
-        {destAssertion, IRB.getInt1(true), getTargetPreferredInt(V), filenameVal, lineVal});
+        {destAssertion, IRB.getInt1(true), getTargetPreferredInt(V), filenameVal, lineVal, colVal});
     registerSymbolicComputation(SymbolicComputation(
         concreteDestExpr, pushAssertion, {Input(V, 0, destAssertion)}));
   }

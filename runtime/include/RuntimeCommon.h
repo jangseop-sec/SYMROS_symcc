@@ -214,7 +214,7 @@ SymExpr _sym_get_return_expression(void);
 void _sym_push_path_constraint(nullable SymExpr constraint, int taken,
                                uintptr_t site_id);
 void _sym_push_path_constraint_with_loc(nullable SymExpr constraint, int taken,
-                               uintptr_t site_id, const char * filename, int line);
+                               uintptr_t site_id, const char * filename, int line, int col);
 SymExpr _sym_get_input_byte(size_t offset, uint8_t concrete_value);
 SymExpr _sym_get_input_byte_with_prefix(const char * prefix, size_t offset, uint8_t concrete_value);
 SymExpr _sym_get_integer(const char *name);
