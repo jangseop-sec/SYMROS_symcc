@@ -27,9 +27,12 @@
 class Symbolizer : public llvm::InstVisitor<Symbolizer> {
 public:
   explicit Symbolizer(llvm::Module &M)
-      : runtime(M), dataLayout(M.getDataLayout()),
+      : ID(0),
+        runtime(M), dataLayout(M.getDataLayout()),
         ptrBits(M.getDataLayout().getPointerSizeInBits()),
         intPtrType(M.getDataLayout().getIntPtrType(M.getContext())) {}
+  
+  uint64_t ID;
 
   /// Insert code to obtain the symbolic expressions for the function arguments.
   void symbolizeFunctionArguments(llvm::Function &F);
