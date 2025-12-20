@@ -20,7 +20,6 @@
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/IR/ModuleSlotTracker.h>
 
 #include "Runtime.h"
 

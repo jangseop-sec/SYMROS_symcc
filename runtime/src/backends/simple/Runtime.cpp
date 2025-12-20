@@ -601,8 +601,8 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   // const char * constraint_string = Z3_ast_to_string(g_context, constraint);
   // uint64_t constraint_hash = hash_string(constraint_string);
   long var_hash = get_vars_hash(g_context, constraint);
-  fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%s.%d.%d\nSMT:%s\n====end of smt====\n",
-          col, var_hash, filename, line, taken, Z3_solver_to_string(g_context, g_solver));
+  fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%s.%d\nSMT:%s\n====end of smt====\n",
+          col, var_hash, filename, line, Z3_solver_to_string(g_context, g_solver));
 
 //  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
 //  if (feasible == Z3_L_TRUE) {
