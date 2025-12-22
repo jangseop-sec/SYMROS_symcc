@@ -519,20 +519,35 @@ Z3_ast _sym_build_bits_to_int(Z3_ast expr, int is_signed) {
       g_context, expr, is_signed));
 }
 
-uint64_t hash_string(const char *s) {
-    uint64_t h = 5381;
-    int c;
-    while ((c = *s++))
-        h = ((h << 5) + h) + (uint64_t)c; // h*33 + c
+uint64_t hash_init(void) {
+    return 1469598103934665603ULL;  // FNV offset basis
+}
+
+uint64_t hash_update(uint64_t h, uint64_t v) {
+    h ^= v;
+    h *= 1099511628211ULL;          // FNV prime
     return h;
 }
 
-long get_vars_hash(Z3_context ctx, Z3_ast ast) {
+uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
   Z3_ast_kind ak = Z3_get_ast_kind(ctx, ast);
 
-  long hash = 0;
+  uint64_t hash = hash_init();
+
+  if (ak == Z3_NUMERAL_AST) {
+    if (Z3_is_numeral_ast(ctx, ast)) {
+      const char * s = Z3_get_numeral_string(ctx, ast);
+      errno = 0;
+      char * end;
+      long v = strtol(s, &end, 0);
+      if (errno == 0 && end != s) {
+        return hash_update(hash, v);
+      }
+    }
+  }
 
   if (ak == Z3_APP_AST) {
+
     Z3_app app = Z3_to_app(ctx, ast);
     Z3_func_decl decl = Z3_get_app_decl(ctx, app);
     Z3_decl_kind dk = Z3_get_decl_kind(ctx, decl);
@@ -551,7 +566,7 @@ long get_vars_hash(Z3_context ctx, Z3_ast ast) {
           var_index = var_index + 1;
           long v = strtol(var_index, &end, 10);
           if (errno == 0 && end != var_index && *end == '\0') {
-            hash += v;
+            hash = hash_update(hash, v);
           }
         }
       }
@@ -559,7 +574,7 @@ long get_vars_hash(Z3_context ctx, Z3_ast ast) {
 
     unsigned num = Z3_get_app_num_args(ctx, app);
     for (unsigned i=0; i<num; ++i) {
-      hash += get_vars_hash(ctx, Z3_get_app_arg(ctx, app, i));
+      hash = hash_update(hash, get_vars_hash(ctx, Z3_get_app_arg(ctx, app, i)));
     }
   }
 
@@ -601,8 +616,8 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   // const char * constraint_string = Z3_ast_to_string(g_context, constraint);
   // uint64_t constraint_hash = hash_string(constraint_string);
   long var_hash = get_vars_hash(g_context, constraint);
-  fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%s.%d\nSMT:%s\n====end of smt====\n",
-          col, var_hash, filename, line, Z3_solver_to_string(g_context, g_solver));
+  fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of smt====\n",
+          col, var_hash, taken, filename, line, Z3_solver_to_string(g_context, g_solver));
 
 //  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
 //  if (feasible == Z3_L_TRUE) {
