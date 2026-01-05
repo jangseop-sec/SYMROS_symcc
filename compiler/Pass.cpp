@@ -54,7 +54,7 @@ namespace {
 static constexpr char kSymCtorName[] = "__sym_ctor";
 
 bool instrumentModule(Module &M) {
-  DEBUG(errs() << "Symbolizer module instrumentation\n");
+  // DEBUG(errs() << "Symbolizer module instrumentation\n");
 
   // Redirect calls to external functions to the corresponding wrappers and
   // rename internal functions.
@@ -212,7 +212,7 @@ bool instrumentFunction(Function &F) {
 
 bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   // OverflowChecker checker;
-  errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
+  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
   for (auto &I : instructions(F)) {
     errs() << "[OverflowCheckerLegacyPass] visiting instruction" << I.getName() << "\n";
   }
@@ -231,7 +231,7 @@ bool SymbolizeLegacyPass::runOnFunction(Function &F) {
 
 PreservedAnalyses OverflowCheckerPass::run(Function &F,
                                             FunctionAnalysisManager &) {
-  errs() << "[OverflowCheckerPass] visiting function: " << F.getName() << "\n";
+  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() << "\n";
   OverflowChecker checker(*F.getParent()); 
   
   std::vector<Instruction *> allInstructions;
@@ -246,18 +246,18 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
 
 PreservedAnalyses OverflowCheckerPass::run(Module &,
                                             ModuleAnalysisManager &) {
-  errs() << "[OverflowCheckerPass] visiting module\n";                                            
+  // errs() << "[OverflowCheckerPass] visiting module\n";                                            
   return PreservedAnalyses::all();
 }
 
 PreservedAnalyses SymbolizePass::run(Function &F, FunctionAnalysisManager &) {
-  errs() << "Symbolizing function " << F.getName() << "\n";
+  // errs() << "Symbolizing function " << F.getName() << "\n";
   return instrumentFunction(F) ? PreservedAnalyses::none()
                                : PreservedAnalyses::all();
 }
 
 PreservedAnalyses SymbolizePass::run(Module &M, ModuleAnalysisManager &) {
-  errs() << "Symbolizing module\n";
+  // errs() << "Symbolizing module\n";
   return instrumentModule(M) ? PreservedAnalyses::none()
                              : PreservedAnalyses::all();
 }
