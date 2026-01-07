@@ -604,7 +604,6 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
     Z3_dec_ref(g_context, constraint);
     return;
   }
-
   /* Generate a solution for the alternative */
   Z3_ast not_constraint =
       Z3_simplify(g_context, Z3_mk_not(g_context, constraint));
@@ -618,7 +617,9 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   long var_hash = get_vars_hash(g_context, constraint);
   fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of smt====\n",
           col, var_hash, taken, filename, line, Z3_solver_to_string(g_context, g_solver));
-
+  // fprintf(g_log, "Location:%d.%ld.%d.%s.%d\n",
+  //         col, var_hash, taken, filename, line);
+ 
 //  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
 //  if (feasible == Z3_L_TRUE) {
 //    Z3_model model = Z3_solver_get_model(g_context, g_solver);
@@ -639,6 +640,7 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   Z3_solver_assert(g_context, g_solver, newConstraint);
 //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
 //         "Asserting infeasible path constraint");
+  Z3_dec_ref(g_context, newConstraint);
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
@@ -697,6 +699,7 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   Z3_solver_assert(g_context, g_solver, newConstraint);
 //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
 //         "Asserting infeasible path constraint");
+  Z3_dec_ref(g_context, newConstraint);
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
