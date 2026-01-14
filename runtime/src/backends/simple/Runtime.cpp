@@ -610,7 +610,7 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   Z3_inc_ref(g_context, not_constraint);
 
   Z3_solver_push(g_context, g_solver);
-  Z3_solver_assert(g_context, g_solver, taken ? not_constraint : constraint);
+  Z3_solver_assert(g_context, g_solver, taken ? constraint : not_constraint);
 
   // const char * constraint_string = Z3_ast_to_string(g_context, constraint);
   // uint64_t constraint_hash = hash_string(constraint_string);
@@ -635,12 +635,12 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   Z3_solver_pop(g_context, g_solver, 1);
 
   /* Assert the actual path constraint */
-  Z3_ast newConstraint = (taken ? constraint : not_constraint);
-  Z3_inc_ref(g_context, newConstraint);
-  Z3_solver_assert(g_context, g_solver, newConstraint);
-//  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
-//         "Asserting infeasible path constraint");
-  Z3_dec_ref(g_context, newConstraint);
+//   Z3_ast newConstraint = (taken ? constraint : not_constraint);
+//   Z3_inc_ref(g_context, newConstraint);
+//   Z3_solver_assert(g_context, g_solver, newConstraint);
+// //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
+// //         "Asserting infeasible path constraint");
+//   Z3_dec_ref(g_context, newConstraint);
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
