@@ -381,7 +381,7 @@ SymExpr _sym_build_add_overflow(SymExpr a, SymExpr b, bool is_signed,
       SymExpr add_zext =
           _sym_build_add(_sym_build_zext(a, 1), _sym_build_zext(b, 1));
       return _sym_build_equal(_sym_extract_helper(add_zext, bits, bits),
-                              _sym_build_true());
+                              _sym_build_integer(1, 1));
     }
   }();
 
@@ -403,7 +403,7 @@ SymExpr _sym_build_sub_overflow(SymExpr a, SymExpr b, bool is_signed,
       SymExpr sub_zext =
           _sym_build_sub(_sym_build_zext(a, 1), _sym_build_zext(b, 1));
       return _sym_build_equal(_sym_extract_helper(sub_zext, bits, bits),
-                              _sym_build_true());
+                              _sym_build_integer(1, 1));
     }
   }();
 
@@ -426,7 +426,7 @@ SymExpr _sym_build_mul_overflow(SymExpr a, SymExpr b, bool is_signed,
           _sym_build_mul(_sym_build_zext(a, bits), _sym_build_zext(b, bits));
       return _sym_build_equal(
           _sym_extract_helper(mul_zext, 2 * bits - 1, 2 * bits - 1),
-          _sym_build_true());
+          _sym_build_integer(1, 1));
     }
   }();
 
