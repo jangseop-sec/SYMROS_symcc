@@ -46,6 +46,7 @@
    it in C for now because that makes it easier to experiment with new features,
    but I expect that a lot of the functions will stay so simple that we can
    generate the corresponding bitcode directly in the compiler pass. */
+#define Z3_dec_ref(ctx, x) do {} while(0)
 
 namespace {
 
@@ -585,7 +586,7 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
                                uintptr_t site_id [[maybe_unused]], const char * filename, int line, int col) {
   if (constraint == nullptr)
     return;
-
+                          
   constraint = Z3_simplify(g_context, constraint);
   Z3_inc_ref(g_context, constraint);
 
@@ -614,9 +615,9 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
 
   // const char * constraint_string = Z3_ast_to_string(g_context, constraint);
   // uint64_t constraint_hash = hash_string(constraint_string);
-  long var_hash = get_vars_hash(g_context, constraint);
+  // long var_hash = get_vars_hash(g_context, constraint);
   fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of smt====\n",
-          col, var_hash, taken, filename, line, Z3_solver_to_string(g_context, g_solver));
+          col, 0L, taken, filename, line, Z3_solver_to_string(g_context, g_solver));
   // fprintf(g_log, "Location:%d.%ld.%d.%s.%d\n",
   //         col, var_hash, taken, filename, line);
  
@@ -647,7 +648,10 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
 
 void _sym_push_path_constraint(Z3_ast constraint, int taken,
                                uintptr_t site_id [[maybe_unused]]) {
+  std::cout << "call" << std::endl;
   if (constraint == nullptr)
+    return;
+  else
     return;
 
   constraint = Z3_simplify(g_context, constraint);
@@ -699,7 +703,7 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   Z3_solver_assert(g_context, g_solver, newConstraint);
 //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
 //         "Asserting infeasible path constraint");
-  Z3_dec_ref(g_context, newConstraint);
+  // Z3_dec_ref(g_context, newConstraint);
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
