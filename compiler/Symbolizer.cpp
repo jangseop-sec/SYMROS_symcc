@@ -44,6 +44,8 @@ void Symbolizer::insertBasicBlockNotification(llvm::BasicBlock &B) {
   IRB.CreateCall(runtime.notifyBasicBlock, getTargetPreferredInt(&B));
 }
 
+void Symbolizer::setLoopInfo(llvm::LoopInfo &LoopInfoRef) { LI = &LoopInfoRef; }
+
 void Symbolizer::finalizePHINodes() {
   SmallPtrSet<PHINode *, 32> nodesToErase;
 
@@ -537,6 +539,39 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
   //   IRB.CreateCall(runtime.localizeBranchInstruction,
   //                 {filenameVal, lineVal});
   // } 
+
+  // loop info identify
+  if (LI) {
+    llvm::BasicBlock *BB = I.getParent();
+    if(llvm::Loop *L = LI->getLoopFor(BB)) {
+
+      if (LoopFirstIterationSeen[L]) return;
+
+      if (L->getHeader() == BB) {
+        if (llvm::BasicBlock *PreHeader = L->getLoopPreheader()) {
+          bool isFirstIteration = false;
+
+          for (auto &Inst : *BB) {
+            if (auto *Phi = llvm::dyn_cast<llvm::PHINode>(&Inst)) {
+              if (Phi->getIncomingValueForBlock(PreHeader)) {
+                isFirstIteration = true;
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+
+          errs() << "loop is identify, firstIteration= " << isFirstIteration << "\n";
+
+          if (!isFirstIteration) {
+            LoopFirstIterationSeen[L] = true;
+            return;
+          }
+        }
+      }
+    }
+  }
 
   int slot = ID++;
   llvm::Value *slotVal = IRB.getInt32(slot);

@@ -20,7 +20,9 @@
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/ValueMap.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <optional>
+#include <unordered_map>
 
 #include "Runtime.h"
 
@@ -40,6 +42,9 @@ public:
   /// Insert a call to the run-time library to notify it of the basic block
   /// entry.
   void insertBasicBlockNotification(llvm::BasicBlock &B);
+
+  /// set Loop info
+  void setLoopInfo(llvm::LoopInfo &LoopInfoRef);
 
   /// Finish the processing of PHI nodes.
   ///
@@ -139,6 +144,10 @@ public:
 private:
   static constexpr unsigned kExpectedMaxPHINodesPerFunction = 16;
   static constexpr unsigned kExpectedSymbolicArgumentsPerComputation = 2;
+
+  // loop information
+  llvm::LoopInfo *LI = nullptr;
+  std::unordered_map<const llvm::Loop*, bool> LoopFirstIterationSeen;
 
   /// A symbolic input.
   struct Input {

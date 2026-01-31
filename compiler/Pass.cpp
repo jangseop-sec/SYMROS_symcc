@@ -160,7 +160,7 @@ void liftInlineAssembly(CallInst *CI) {
   targetLowering->ExpandInlineAsm(CI);
 }
 
-bool instrumentFunction(Function &F) {
+bool instrumentFunction(Function &F, llvm::LoopInfo *LI) {
   auto functionName = F.getName();
   if (functionName == kSymCtorName)
     return false;
@@ -189,6 +189,7 @@ bool instrumentFunction(Function &F) {
     allInstructions.push_back(&I);
 
   Symbolizer symbolizer(*F.getParent());
+  if (LI) symbolizer.setLoopInfo(*LI);
   symbolizer.symbolizeFunctionArguments(F);
 
   for (auto &basicBlock : F)
@@ -224,10 +225,10 @@ bool SymbolizeLegacyPass::doInitialization(Module &M) {
 }
 
 bool SymbolizeLegacyPass::runOnFunction(Function &F) {
-  return instrumentFunction(F);
+  return instrumentFunction(F, nullptr);
 }
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
 
 PreservedAnalyses OverflowCheckerPass::run(Function &F,
                                             FunctionAnalysisManager &) {
@@ -250,9 +251,11 @@ PreservedAnalyses OverflowCheckerPass::run(Module &,
   return PreservedAnalyses::all();
 }
 
-PreservedAnalyses SymbolizePass::run(Function &F, FunctionAnalysisManager &) {
+PreservedAnalyses SymbolizePass::run(Function &F, FunctionAnalysisManager & FAM) {
   // errs() << "Symbolizing function " << F.getName() << "\n";
-  return instrumentFunction(F) ? PreservedAnalyses::none()
+  llvm::LoopInfo &LI = FAM.getResult<LoopAnalysis>(F);
+
+  return instrumentFunction(F, &LI) ? PreservedAnalyses::none()
                                : PreservedAnalyses::all();
 }
 
