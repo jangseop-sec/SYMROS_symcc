@@ -46,7 +46,9 @@
    it in C for now because that makes it easier to experiment with new features,
    but I expect that a lot of the functions will stay so simple that we can
    generate the corresponding bitcode directly in the compiler pass. */
-#define Z3_dec_ref(ctx, x) do {} while(0)
+#define Z3_dec_ref(ctx, x)                                                     \
+  do {                                                                         \
+  } while (0)
 
 namespace {
 
@@ -65,6 +67,10 @@ Z3_solver g_solver; // TODO make thread-local
 // Some global constants for efficiency.
 Z3_ast g_null_pointer, g_true, g_false;
 
+std::vector<Z3_ast> string_eq_constraints;
+std::vector<Z3_ast> string_not_eq_constraints;
+bool string_taken;
+
 FILE *g_log = stderr;
 
 #ifndef NDEBUG
@@ -75,7 +81,7 @@ FILE *g_log = stderr;
   }
 }
 
-const char* g_last_z3_call = "(none)";
+const char *g_last_z3_call = "(none)";
 
 void handle_z3_error(Z3_context c [[maybe_unused]], Z3_error_code e) {
   std::fprintf(g_log, "[Z3] ERROR raised at call=%s code=%d msg=%s\n",
@@ -210,11 +216,10 @@ Z3_ast _sym_get_input_byte(size_t offset, uint8_t) {
   return var;
 }
 
-Z3_ast _sym_get_integer(const char *name) {
-  return build_variable_int(name);
-}
+Z3_ast _sym_get_integer(const char *name) { return build_variable_int(name); }
 
-Z3_ast _sym_get_input_byte_with_prefix(const char * prefix, size_t offset, uint8_t) {
+Z3_ast _sym_get_input_byte_with_prefix(const char *prefix, size_t offset,
+                                       uint8_t) {
   static std::vector<SymExpr> stdinBytes;
 
   if (offset < stdinBytes.size())
@@ -285,7 +290,7 @@ DEF_BINARY_EXPR_BUILDER(float_ordered_equal, fpa_eq)
   SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                      \
     auto a_int = _sym_build_bits_to_int(a, 0);                                 \
     auto b_int = _sym_build_bits_to_int(b, 0);                                 \
-    Z3_ast args[2] = { a_int, b_int };                                         \
+    Z3_ast args[2] = {a_int, b_int};                                           \
     return registerExpression(Z3_mk_##z3_func(g_context, 2, args));            \
   }
 
@@ -297,11 +302,11 @@ DEF_INT_NARY_EXPR_BUILDER(or, or)
 
 #undef DEF_INT_NARY_EXPR_BUILDER
 
-#define DEF_INT_BINARY_EXPR_BUILDER(name, z3_func, is_signed)                              \
-  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {        \
-    auto a_int = _sym_build_bits_to_int(a, is_signed);                          \
-    auto b_int = _sym_build_bits_to_int(b, is_signed);                          \
-    return registerExpression(Z3_mk_##z3_func(g_context, a_int, b_int));        \
+#define DEF_INT_BINARY_EXPR_BUILDER(name, z3_func, is_signed)                  \
+  SymExpr _sym_build_##name##_int(SymExpr a, SymExpr b) {                      \
+    auto a_int = _sym_build_bits_to_int(a, is_signed);                         \
+    auto b_int = _sym_build_bits_to_int(b, is_signed);                         \
+    return registerExpression(Z3_mk_##z3_func(g_context, a_int, b_int));       \
   }
 
 DEF_INT_BINARY_EXPR_BUILDER(unsigned_div, div, 0)
@@ -516,18 +521,17 @@ Z3_ast _sym_build_bool_to_bit(Z3_ast expr) {
 }
 
 Z3_ast _sym_build_bits_to_int(Z3_ast expr, int is_signed) {
-  return registerExpression(Z3_mk_bv2int(
-      g_context, expr, is_signed));
+  return registerExpression(Z3_mk_bv2int(g_context, expr, is_signed));
 }
 
 uint64_t hash_init(void) {
-    return 1469598103934665603ULL;  // FNV offset basis
+  return 1469598103934665603ULL; // FNV offset basis
 }
 
 uint64_t hash_update(uint64_t h, uint64_t v) {
-    h ^= v;
-    h *= 1099511628211ULL;          // FNV prime
-    return h;
+  h ^= v;
+  h *= 1099511628211ULL; // FNV prime
+  return h;
 }
 
 uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
@@ -537,9 +541,9 @@ uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
 
   if (ak == Z3_NUMERAL_AST) {
     if (Z3_is_numeral_ast(ctx, ast)) {
-      const char * s = Z3_get_numeral_string(ctx, ast);
+      const char *s = Z3_get_numeral_string(ctx, ast);
       errno = 0;
-      char * end;
+      char *end;
       long v = strtol(s, &end, 0);
       if (errno == 0 && end != s) {
         return hash_update(hash, v);
@@ -557,10 +561,10 @@ uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
       Z3_symbol sym = Z3_get_decl_name(ctx, decl);
 
       if (Z3_get_symbol_kind(ctx, sym) == Z3_STRING_SYMBOL) {
-        const char * var_name = Z3_get_symbol_string(ctx, sym);
-        const char * var_index = strrchr(var_name, '_');
+        const char *var_name = Z3_get_symbol_string(ctx, sym);
+        const char *var_index = strrchr(var_name, '_');
 
-        char * end;
+        char *end;
         errno = 0;
 
         if (var_index && *(var_index + 1) != '\0') {
@@ -574,7 +578,7 @@ uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
     }
 
     unsigned num = Z3_get_app_num_args(ctx, app);
-    for (unsigned i=0; i<num; ++i) {
+    for (unsigned i = 0; i < num; ++i) {
       hash = hash_update(hash, get_vars_hash(ctx, Z3_get_app_arg(ctx, app, i)));
     }
   }
@@ -583,10 +587,12 @@ uint64_t get_vars_hash(Z3_context ctx, Z3_ast ast) {
 }
 
 void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
-                               uintptr_t site_id [[maybe_unused]], const char * filename, int line, int col) {
+                                        uintptr_t site_id [[maybe_unused]],
+                                        const char *filename, int line,
+                                        int slot_id) {
   if (constraint == nullptr)
     return;
-                          
+
   constraint = Z3_simplify(g_context, constraint);
   Z3_inc_ref(g_context, constraint);
 
@@ -611,37 +617,77 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   Z3_inc_ref(g_context, not_constraint);
 
   Z3_solver_push(g_context, g_solver);
-  Z3_solver_assert(g_context, g_solver, taken ? constraint : not_constraint);
 
-  // const char * constraint_string = Z3_ast_to_string(g_context, constraint);
-  // uint64_t constraint_hash = hash_string(constraint_string);
-  // long var_hash = get_vars_hash(g_context, constraint);
-  fprintf(g_log, "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of smt====\n",
-          col, 0L, taken, filename, line, Z3_solver_to_string(g_context, g_solver));
-  // fprintf(g_log, "Location:%d.%ld.%d.%s.%d\n",
-  //         col, var_hash, taken, filename, line);
- 
-//  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
-//  if (feasible == Z3_L_TRUE) {
-//    Z3_model model = Z3_solver_get_model(g_context, g_solver);
-//    Z3_model_inc_ref(g_context, model);
-//    fprintf(g_log, "Found diverging input:\n%s\n",
-//            Z3_model_to_string(g_context, model));
-//    Z3_model_dec_ref(g_context, model);
-//  } else {
-//    fprintf(g_log, "Can't find a diverging input at this point\n");
-//  }
-  fflush(g_log);
+  // TODO std::string atomic symbolize
+  int string_size_check_line = 13;
+  int strcmp_start_line = 23;
 
-  Z3_solver_pop(g_context, g_solver, 1);
+  if (strcmp(filename, "../../symros-libcxx/include/symros_string.hpp") == 0) {
+    if (line == string_size_check_line) {
+      string_eq_constraints.clear();
+      string_not_eq_constraints.clear();
+      string_taken = true;
 
-  /* Assert the actual path constraint */
-//   Z3_ast newConstraint = (taken ? constraint : not_constraint);
-//   Z3_inc_ref(g_context, newConstraint);
-//   Z3_solver_assert(g_context, g_solver, newConstraint);
-// //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
-// //         "Asserting infeasible path constraint");
-//   Z3_dec_ref(g_context, newConstraint);
+      if (taken == 1) string_taken = false;
+      string_eq_constraints.push_back(not_constraint);
+      string_not_eq_constraints.push_back(constraint);
+    } else {
+      size_t cond_num = line - strcmp_start_line + 1;
+      if (taken == 1) string_taken = false;
+      string_eq_constraints.push_back(not_constraint);
+      string_not_eq_constraints.push_back(constraint);
+      
+      // all string constraints are collected
+      if (string_eq_constraints.size() == cond_num) {
+        if (string_taken) {
+          Z3_ast final_constraint = Z3_mk_and(
+            g_context,
+            string_eq_constraints.size(),
+            string_eq_constraints.data()
+          );
+          Z3_inc_ref(g_context, final_constraint);
+          Z3_solver_assert(g_context, g_solver, final_constraint);
+          fprintf(g_log,
+            "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
+            "smt====\n",
+            slot_id, 0L, string_taken, filename, line,
+            Z3_solver_to_string(g_context, g_solver));
+          fflush(g_log);
+          Z3_solver_pop(g_context, g_solver, 1);
+          Z3_dec_ref(g_context, final_constraint);
+        } else {
+          Z3_ast final_constraint = Z3_mk_or(
+            g_context,
+            string_not_eq_constraints.size(),
+            string_not_eq_constraints.data()
+          );
+          Z3_inc_ref(g_context, final_constraint);
+          Z3_solver_assert(g_context, g_solver, final_constraint);
+          fprintf(g_log,
+            "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
+            "smt====\n",
+            slot_id, 0L, string_taken, filename, line,
+            Z3_solver_to_string(g_context, g_solver));
+          fflush(g_log);
+          Z3_solver_pop(g_context, g_solver, 1);
+          Z3_dec_ref(g_context, final_constraint);
+        }
+      }
+    }
+  } else {
+    Z3_solver_assert(g_context, g_solver, taken ? constraint : not_constraint);
+
+    fprintf(g_log,
+            "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
+            "smt====\n",
+            slot_id, 0L, taken, filename, line,
+            Z3_solver_to_string(g_context, g_solver));
+
+    fflush(g_log);
+    Z3_solver_pop(g_context, g_solver, 1);
+  }
+
+
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
@@ -683,16 +729,16 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   fprintf(g_log, "Trying to solve:\n%s\n====end of smt====\n",
           Z3_solver_to_string(g_context, g_solver));
 
-//  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
-//  if (feasible == Z3_L_TRUE) {
-//    Z3_model model = Z3_solver_get_model(g_context, g_solver);
-//    Z3_model_inc_ref(g_context, model);
-//    fprintf(g_log, "Found diverging input:\n%s\n",
-//            Z3_model_to_string(g_context, model));
-//    Z3_model_dec_ref(g_context, model);
-//  } else {
-//    fprintf(g_log, "Can't find a diverging input at this point\n");
-//  }
+  //  Z3_lbool feasible = Z3_solver_check(g_context, g_solver);
+  //  if (feasible == Z3_L_TRUE) {
+  //    Z3_model model = Z3_solver_get_model(g_context, g_solver);
+  //    Z3_model_inc_ref(g_context, model);
+  //    fprintf(g_log, "Found diverging input:\n%s\n",
+  //            Z3_model_to_string(g_context, model));
+  //    Z3_model_dec_ref(g_context, model);
+  //  } else {
+  //    fprintf(g_log, "Can't find a diverging input at this point\n");
+  //  }
   fflush(g_log);
 
   Z3_solver_pop(g_context, g_solver, 1);
@@ -701,16 +747,17 @@ void _sym_push_path_constraint(Z3_ast constraint, int taken,
   Z3_ast newConstraint = (taken ? constraint : not_constraint);
   Z3_inc_ref(g_context, newConstraint);
   Z3_solver_assert(g_context, g_solver, newConstraint);
-//  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
-//         "Asserting infeasible path constraint");
+  //  assert((Z3_solver_check(g_context, g_solver) == Z3_L_TRUE) &&
+  //         "Asserting infeasible path constraint");
   // Z3_dec_ref(g_context, newConstraint);
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
 }
 
-void _sym_localize_branch_instruction(const char * filename, int line_number) {
-  
-  fprintf(g_log, "[symcc] Localizing branch instruction at %s:%d\n", filename, line_number);
+void _sym_localize_branch_instruction(const char *filename, int line_number) {
+
+  fprintf(g_log, "[symcc] Localizing branch instruction at %s:%d\n", filename,
+          line_number);
 }
 
 SymExpr _sym_concat_helper(SymExpr a, SymExpr b) {
@@ -797,6 +844,4 @@ void symcc_set_test_case_handler(TestCaseHandler) {
       "Warning: test-case handlers aren't supported in the simple backend\n");
 }
 
-void symcc_reset_constraints() {
-  Z3_solver_reset(g_context, g_solver);
-}
+void symcc_reset_constraints() { Z3_solver_reset(g_context, g_solver); }
