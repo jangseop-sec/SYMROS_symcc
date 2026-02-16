@@ -23,7 +23,7 @@
 
 #include "Runtime.h"
 
-using namespace llvm; 
+using namespace llvm;
 
 void Symbolizer::symbolizeFunctionArguments(Function &F) {
   // The main function doesn't receive symbolic arguments.
@@ -444,12 +444,12 @@ void Symbolizer::visitSelectInst(SelectInst &I) {
   // expression over from the chosen argument.
 
   IRBuilder<> IRB(&I);
-  
+
   // locage branch instrunction
   std::string filename;
   int Line = -1;
   if (auto DL = I.getDebugLoc()) {
-    if (auto Loc = DL.get()) { 
+    if (auto Loc = DL.get()) {
       while (Loc && Loc->getInlinedAt()) {
         Loc = Loc->getInlinedAt();
       }
@@ -523,7 +523,7 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
   int Line = -1;
 
   if (auto DL = I.getDebugLoc()) {
-    if (auto Loc = DL.get()) { 
+    if (auto Loc = DL.get()) {
       while (Loc && Loc->getInlinedAt()) {
         Loc = Loc->getInlinedAt();
       }
@@ -535,46 +535,102 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
 
   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
   llvm::Value *lineVal = IRB.getInt32(Line);
+  int slot = ID++;
+  llvm::Value *slotVal = IRB.getInt32(slot);
   // if (filename.find("/libcxx_symcc_install") == std::string::npos) {
   //   IRB.CreateCall(runtime.localizeBranchInstruction,
   //                 {filenameVal, lineVal});
-  // } 
+  // }
 
   // loop info identify
   if (LI) {
     llvm::BasicBlock *BB = I.getParent();
-    if(llvm::Loop *L = LI->getLoopFor(BB)) {
+    if (llvm::Loop *L = LI->getLoopFor(BB)) {
 
-      if (LoopFirstIterationSeen[L]) return;
+      // loop condition identify
+      if (BB == L->getHeader() || BB == L->getLoopLatch()) {
+        BasicBlock *S0 = I.getSuccessor(0);
+        BasicBlock *S1 = I.getSuccessor(1);
 
-      if (L->getHeader() == BB) {
-        if (llvm::BasicBlock *PreHeader = L->getLoopPreheader()) {
-          bool isFirstIteration = false;
+        bool S0In = L->contains(S0);
+        bool S1In = L->contains(S1);
 
-          for (auto &Inst : *BB) {
-            if (auto *Phi = llvm::dyn_cast<llvm::PHINode>(&Inst)) {
-              if (Phi->getIncomingValueForBlock(PreHeader)) {
-                isFirstIteration = true;
-                break;
-              }
-            } else {
-              break;
-            }
-          }
-
-          errs() << "loop is identify, firstIteration= " << isFirstIteration << "\n";
-
-          if (!isFirstIteration) {
-            LoopFirstIterationSeen[L] = true;
-            return;
-          }
+        if (S0In ^ S1In) {
+          errs() << "loop condition is identified!\n";
+          slotVal = IRB.getInt32(-1);
         }
+      }
+
+      if (true) {
+
+        // [NEW] 이미 이 branch에 guard를 삽입했으면 다시 하지 않기 (무한 split
+        // 방지)
+        if (I.getMetadata("symcc.loop.guard"))
+          return;
+
+        // [NEW] split 전에 cond를 잡아둠 (dominance 안전)
+        // llvm::Value *Cond = I.getCondition();
+
+        if (LoopSeenFlag.find(&I) == LoopSeenFlag.end()) {
+          llvm::Function *F0 = BB->getParent();
+
+          llvm::IRBuilder<> EntryIRB(
+              &*F0->getEntryBlock().getFirstInsertionPt());
+
+          auto *Flag =
+              EntryIRB.CreateAlloca(EntryIRB.getInt1Ty(), nullptr, "loop_seen");
+
+          EntryIRB.CreateStore(EntryIRB.getFalse(), Flag);
+
+          LoopSeenFlag[&I] = Flag;
+        }
+
+        llvm::Instruction *SplitPt = &I;
+        llvm::BasicBlock *OriginBB = BB;
+        llvm::BasicBlock *ContBB =
+            OriginBB->splitBasicBlock(SplitPt, "after_loop_guard");
+
+        llvm::Function *F = OriginBB->getParent();
+        llvm::LLVMContext &Ctx = F->getContext();
+
+        llvm::BasicBlock *PushBB =
+            llvm::BasicBlock::Create(Ctx, "loop_do_push", F, ContBB);
+        llvm::BasicBlock *NoPushBB =
+            llvm::BasicBlock::Create(Ctx, "loop_skip_push", F, ContBB);
+
+        llvm::Instruction *OldTerm = OriginBB->getTerminator();
+        llvm::IRBuilder<> IRB(OldTerm);
+
+        llvm::Value *Seen = IRB.CreateLoad(IRB.getInt1Ty(), LoopSeenFlag[&I]);
+
+        IRB.CreateCondBr(Seen, NoPushBB, PushBB);
+        OldTerm->eraseFromParent();
+
+        llvm::IRBuilder<> PushIRB(PushBB);
+
+        I.setMetadata("symcc.loop.guard",
+                      llvm::MDNode::get(I.getContext(), {}));
+
+        auto runtimeCall =
+            buildRuntimeCall(PushIRB, runtime.pushPathConstraintWithLoc,
+                             {{I.getCondition(), true},
+                              {I.getCondition(), false},
+                              {getTargetPreferredInt(&I), false},
+                              {filenameVal, false},
+                              {lineVal, false},
+                              {slotVal, false}});
+        registerSymbolicComputation(runtimeCall);
+
+        PushIRB.CreateStore(PushIRB.getTrue(), LoopSeenFlag[&I]);
+        PushIRB.CreateBr(ContBB);
+
+        llvm::IRBuilder<> NoPushIRB(NoPushBB);
+        NoPushIRB.CreateBr(ContBB);
+
+        return;
       }
     }
   }
-
-  int slot = ID++;
-  llvm::Value *slotVal = IRB.getInt32(slot);
 
   auto runtimeCall = buildRuntimeCall(IRB, runtime.pushPathConstraintWithLoc,
                                       {{I.getCondition(), true},
@@ -1006,7 +1062,7 @@ void Symbolizer::visitSwitchInst(SwitchInst &I) {
   int Line = -1;
 
   if (auto DL = I.getDebugLoc()) {
-    if (auto Loc = DL.get()) { 
+    if (auto Loc = DL.get()) {
       while (Loc && Loc->getInlinedAt()) {
         Loc = Loc->getInlinedAt();
       }
@@ -1036,7 +1092,7 @@ void Symbolizer::visitSwitchInst(SwitchInst &I) {
         runtime.comparisonHandlers[CmpInst::ICMP_EQ],
         {conditionExpr, createValueExpression(caseHandle.getCaseValue(), IRB)});
     IRB.CreateCall(runtime.pushPathConstraintWithLoc,
-                   {caseConstraint, caseTaken, getTargetPreferredInt(&I), 
+                   {caseConstraint, caseTaken, getTargetPreferredInt(&I),
                     filenameVal, lineVal, slotVal});
   }
 }
@@ -1207,13 +1263,13 @@ void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
     auto *destAssertion =
         IRB.CreateCall(runtime.comparisonHandlers[CmpInst::ICMP_EQ],
                        {destExpr, concreteDestExpr});
-    
+
     // locate the instruction
     std::string filename;
     int Line = -1;
 
     if (auto DL = I.getDebugLoc()) {
-      if (auto Loc = DL.get()) { 
+      if (auto Loc = DL.get()) {
         while (Loc && Loc->getInlinedAt()) {
           Loc = Loc->getInlinedAt();
         }
@@ -1228,9 +1284,10 @@ void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
     int slot = ID++;
     llvm::Value *slotVal = IRB.getInt32(slot);
 
-    auto *pushAssertion = IRB.CreateCall(
-        runtime.pushPathConstraintWithLoc,
-        {destAssertion, IRB.getInt1(true), getTargetPreferredInt(V), filenameVal, lineVal, slotVal});
+    auto *pushAssertion = IRB.CreateCall(runtime.pushPathConstraintWithLoc,
+                                         {destAssertion, IRB.getInt1(true),
+                                          getTargetPreferredInt(V), filenameVal,
+                                          lineVal, slotVal});
     registerSymbolicComputation(SymbolicComputation(
         concreteDestExpr, pushAssertion, {Input(V, 0, destAssertion)}));
   }

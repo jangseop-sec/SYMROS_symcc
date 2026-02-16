@@ -15,15 +15,22 @@
 #include "Pass.h"
 
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Analysis/AssumptionCache.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/OptimizationRemarkEmitter.h>
+#include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/CodeGen/TargetLowering.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Transforms/Utils/ModuleUtils.h>
+#include <llvm/Transforms/Utils/UnrollLoop.h>
 
 #if LLVM_VERSION_MAJOR < 14
 #include <llvm/Support/TargetRegistry.h>
@@ -31,9 +38,10 @@
 #include <llvm/MC/TargetRegistry.h>
 #endif
 
+#include "Overflow.h"
 #include "Runtime.h"
 #include "Symbolizer.h"
-#include "Overflow.h"
+#include "Unroll.h"
 
 using namespace llvm;
 
@@ -189,7 +197,8 @@ bool instrumentFunction(Function &F, llvm::LoopInfo *LI) {
     allInstructions.push_back(&I);
 
   Symbolizer symbolizer(*F.getParent());
-  if (LI) symbolizer.setLoopInfo(*LI);
+  if (LI)
+    symbolizer.setLoopInfo(*LI);
   symbolizer.symbolizeFunctionArguments(F);
 
   for (auto &basicBlock : F)
@@ -210,12 +219,13 @@ bool instrumentFunction(Function &F, llvm::LoopInfo *LI) {
 
 } // namespace
 
-
 bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   // OverflowChecker checker;
-  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
+  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName()
+  // << "\n";
   for (auto &I : instructions(F)) {
-    errs() << "[OverflowCheckerLegacyPass] visiting instruction" << I.getName() << "\n";
+    errs() << "[OverflowCheckerLegacyPass] visiting instruction" << I.getName()
+           << "\n";
   }
   return false;
 }
@@ -231,10 +241,11 @@ bool SymbolizeLegacyPass::runOnFunction(Function &F) {
 #if LLVM_VERSION_MAJOR >= 12
 
 PreservedAnalyses OverflowCheckerPass::run(Function &F,
-                                            FunctionAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() << "\n";
-  OverflowChecker checker(*F.getParent()); 
-  
+                                           FunctionAnalysisManager &) {
+  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
+  // "\n";
+  OverflowChecker checker(*F.getParent());
+
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
     allInstructions.push_back(&I);
@@ -245,18 +256,32 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
   return PreservedAnalyses::none();
 }
 
-PreservedAnalyses OverflowCheckerPass::run(Module &,
-                                            ModuleAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting module\n";                                            
+PreservedAnalyses OverflowCheckerPass::run(Module &, ModuleAnalysisManager &) {
+  // errs() << "[OverflowCheckerPass] visiting module\n";
   return PreservedAnalyses::all();
 }
 
-PreservedAnalyses SymbolizePass::run(Function &F, FunctionAnalysisManager & FAM) {
+PreservedAnalyses UnrollPass::run(Function &F, FunctionAnalysisManager &FAM) {
+
+  LoopInfo &LI = FAM.getResult<LoopAnalysis>(F);
+  ScalarEvolution &SE = FAM.getResult<ScalarEvolutionAnalysis>(F);
+  DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
+  AssumptionCache &AC = FAM.getResult<AssumptionAnalysis>(F);
+  TargetTransformInfo &TTI = FAM.getResult<TargetIRAnalysis>(F);
+  OptimizationRemarkEmitter &ORE =
+      FAM.getResult<OptimizationRemarkEmitterAnalysis>(F);
+
+  Unroll unroll(LI, SE, DT, AC, TTI, ORE);
+  return unroll.unroll() ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+PreservedAnalyses SymbolizePass::run(Function &F,
+                                     FunctionAnalysisManager &FAM) {
   // errs() << "Symbolizing function " << F.getName() << "\n";
   llvm::LoopInfo &LI = FAM.getResult<LoopAnalysis>(F);
 
   return instrumentFunction(F, &LI) ? PreservedAnalyses::none()
-                               : PreservedAnalyses::all();
+                                    : PreservedAnalyses::all();
 }
 
 PreservedAnalyses SymbolizePass::run(Module &M, ModuleAnalysisManager &) {

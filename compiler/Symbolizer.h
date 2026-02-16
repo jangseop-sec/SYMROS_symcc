@@ -23,6 +23,7 @@
 #include <llvm/Analysis/LoopInfo.h>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 #include "Runtime.h"
 
@@ -147,7 +148,7 @@ private:
 
   // loop information
   llvm::LoopInfo *LI = nullptr;
-  std::unordered_map<const llvm::Loop*, bool> LoopFirstIterationSeen;
+  llvm::DenseMap<llvm::Instruction*, llvm::AllocaInst*> LoopSeenFlag;
 
   /// A symbolic input.
   struct Input {

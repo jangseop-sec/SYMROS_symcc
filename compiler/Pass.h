@@ -19,7 +19,7 @@
 #include <llvm/IR/ValueMap.h>
 #include <llvm/Pass.h>
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
 #include <llvm/IR/PassManager.h>
 #endif
 
@@ -33,6 +33,13 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
 };
 
+class UnrollLegacyPass : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  virtual bool runOnFunction(llvm::Function &F) override;
+};
+
 class SymbolizeLegacyPass : public llvm::FunctionPass {
 public:
   static char ID;
@@ -43,7 +50,7 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
 };
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
 
 class OverflowCheckerPass : public llvm::PassInfoMixin<OverflowCheckerPass> {
 public:
@@ -52,6 +59,12 @@ public:
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &);
 
   static bool isRequired() { return true; }
+};
+
+class UnrollPass : public llvm::PassInfoMixin<UnrollPass> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F,
+                              llvm::FunctionAnalysisManager &);
 };
 
 class SymbolizePass : public llvm::PassInfoMixin<SymbolizePass> {
