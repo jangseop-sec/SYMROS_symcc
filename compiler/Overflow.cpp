@@ -4,18 +4,23 @@ using namespace llvm;
 
 void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
 
-  if (!I.getOperand(0)->getType()->isIntegerTy(32) || !I.getOperand(1)->getType()->isIntegerTy(32)) 
+  if (!I.getOperand(0)->getType()->isIntegerTy(32) ||
+      !I.getOperand(1)->getType()->isIntegerTy(32))
     return;
 
-  if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap()) return;
+  if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap())
+    return;
 
-  llvm::Value* overflowCond = nullptr;
+  llvm::Value *overflowCond = nullptr;
   if (I.getOpcode() == Instruction::Add) {
     overflowCond = getAddOverflowCondition(I);
   } else if (I.getOpcode() == Instruction::Sub) {
     overflowCond = getSubOverflowCondition(I);
   } else if (I.getOpcode() == Instruction::Mul) {
     overflowCond = getMulOverflowCondition(I);
+  } else if (I.getOpcode() == Instruction::UDiv ||
+             I.getOpcode() == Instruction::SDiv) {
+    overflowCond = getDevidedByZeroCondition(I);
   } else {
     return;
   }
@@ -39,10 +44,9 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
 
   // both goto contBB
   IRB.CreateCondBr(overflowCond, ContBB, ContBB);
-
 }
 
-Value* OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
 
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
@@ -53,17 +57,17 @@ Value* OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
 
   assert(Ty->isIntegerTy() && "only integer add supported");
 
-  /* 
+  /*
    * signed overflow
    */
   unsigned BitWidth = Ty->getIntegerBitWidth();
-  
-  APInt IntMax = APInt::getSignedMaxValue(BitWidth);   // INT_MAX
-  APInt IntMin = APInt::getSignedMinValue(BitWidth);   // INT_MIN
+
+  APInt IntMax = APInt::getSignedMaxValue(BitWidth); // INT_MAX
+  APInt IntMin = APInt::getSignedMinValue(BitWidth); // INT_MIN
 
   Value *INT_MAX_V = ConstantInt::get(Ctx, IntMax);
   Value *INT_MIN_V = ConstantInt::get(Ctx, IntMin);
-  Value *ZERO      = ConstantInt::get(Ty, 0);
+  Value *ZERO = ConstantInt::get(Ty, 0);
 
   // cond: (b > 0 && a > INT_MAX - b)
   Value *b_gt_0 = IRB.CreateICmpSGT(b, ZERO);
@@ -84,7 +88,7 @@ Value* OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
    * unsigned overflow
    */
   Value *unsigned_sum = IRB.CreateAdd(a, b);
-  // cond: (a + b) < a  
+  // cond: (a + b) < a
   Value *unsigned_overflow = IRB.CreateICmpULT(unsigned_sum, a);
 
   /*
@@ -93,13 +97,13 @@ Value* OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value* OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
 
   LLVMContext &Ctx = I.getContext();
 
-  IRBuilder<> IRB(&I);  // ✅ split 전에 생성!
+  IRBuilder<> IRB(&I); // ✅ split 전에 생성!
 
   Type *Ty = a->getType();
   assert(Ty->isIntegerTy() && "only integer sub supported");
@@ -114,7 +118,7 @@ Value* OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
 
   Value *INT_MAX_V = ConstantInt::get(Ctx, IntMax);
   Value *INT_MIN_V = ConstantInt::get(Ctx, IntMin);
-  Value *ZERO      = ConstantInt::get(Ty, 0);
+  Value *ZERO = ConstantInt::get(Ty, 0);
 
   // (b < 0)
   Value *b_lt_0 = IRB.CreateICmpSLT(b, ZERO);
@@ -147,13 +151,13 @@ Value* OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value* OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
 
   LLVMContext &Ctx = I.getContext();
 
-  IRBuilder<> IRB(&I);   // ✅ 반드시 split 전에 생성
+  IRBuilder<> IRB(&I); // ✅ 반드시 split 전에 생성
 
   Type *Ty = a->getType();
   assert(Ty->isIntegerTy() && "only integer mul supported");
@@ -163,7 +167,7 @@ Value* OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   // signed overflow
   // ============================
 
-  Value *ZERO      = ConstantInt::get(Ty, 0);
+  Value *ZERO = ConstantInt::get(Ty, 0);
 
   // a != 0
   Value *a_ne_0 = IRB.CreateICmpNE(a, ZERO);
@@ -175,8 +179,7 @@ Value* OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   Value *div = IRB.CreateSDiv(prod, a);
 
   // (prod / a != b)
-  Value *signed_overflow =
-      IRB.CreateAnd(a_ne_0, IRB.CreateICmpNE(div, b));
+  Value *signed_overflow = IRB.CreateAnd(a_ne_0, IRB.CreateICmpNE(div, b));
 
   // ============================
   // Unsigned overflow
@@ -200,4 +203,15 @@ Value* OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   // ============================
 
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
+}
+
+Value *getDevidedByZeroCondition(llvm::BinaryOperator &I) {
+
+  Value *Divisor = I.getOperand(1);
+
+  IRBuilder<> IRB(&I);
+
+  Value *Zero = ConstantInt::get(Divisor->getType(), 0);
+
+  return IRB.CreateICmpEQ(Divisor, Zero);
 }
