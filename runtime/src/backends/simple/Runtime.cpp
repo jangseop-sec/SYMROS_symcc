@@ -621,8 +621,9 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
   // TODO std::string atomic symbolize
   int string_size_check_line = 13;
   int strcmp_start_line = 23;
+  char target[] = "symros_string.hpp";
 
-  if (strcmp(filename, "../../symros-libcxx/include/symros_string.hpp") == 0) {
+  if (strstr(filename, target) != NULL) {
     if (line == string_size_check_line) {
       string_eq_constraints.clear();
       string_not_eq_constraints.clear();
