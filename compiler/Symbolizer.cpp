@@ -19,6 +19,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include "Runtime.h"
@@ -536,6 +537,25 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
   llvm::Value *lineVal = IRB.getInt32(Line);
   int slot = ID++;
+
+  // identify symros numeric check branch
+  if (MDNode *MD = I.getMetadata("symros.check")) {
+    if (MD->getNumOperands() > 0) {
+      if (auto *S = dyn_cast<MDString>(MD->getOperand(0))) {
+        std::string check_type = S->getString().str();
+
+        if (check_type == "int_overflow")
+          slot += 1000;
+        else if (check_type == "int_divided_by_zero")
+          slot += 2000;
+        else if (check_type == "fp_overflow")
+          slot += 3000;
+        else if (check_type == "fp_devided_by_zero")
+          slot += 4000;
+      }
+    }
+  }
+
   llvm::Value *slotVal = IRB.getInt32(slot);
   // if (filename.find("/libcxx_symcc_install") == std::string::npos) {
   //   IRB.CreateCall(runtime.localizeBranchInstruction,

@@ -33,6 +33,16 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
 };
 
+class FPOverflowCheckerLegacyPass : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  FPOverflowCheckerLegacyPass() : FunctionPass(ID) {}
+
+  // virtual bool doInitialization(llvm::Module &M) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
+};
+
 class UnrollLegacyPass : public llvm::FunctionPass {
 public:
   static char ID;
@@ -53,6 +63,16 @@ public:
 #if LLVM_VERSION_MAJOR >= 12
 
 class OverflowCheckerPass : public llvm::PassInfoMixin<OverflowCheckerPass> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F,
+                              llvm::FunctionAnalysisManager &);
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &);
+
+  static bool isRequired() { return true; }
+};
+
+class FPOverflowCheckerPass
+    : public llvm::PassInfoMixin<FPOverflowCheckerPass> {
 public:
   llvm::PreservedAnalyses run(llvm::Function &F,
                               llvm::FunctionAnalysisManager &);

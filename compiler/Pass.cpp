@@ -38,6 +38,7 @@
 #include <llvm/MC/TargetRegistry.h>
 #endif
 
+#include "FPOverflow.h"
 #include "Overflow.h"
 #include "Runtime.h"
 #include "Symbolizer.h"
@@ -230,6 +231,17 @@ bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   return false;
 }
 
+bool FPOverflowCheckerLegacyPass::runOnFunction(Function &F) {
+  // OverflowChecker checker;
+  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName()
+  // << "\n";
+  for (auto &I : instructions(F)) {
+    errs() << "[FPOverflowCheckerLegacyPass] visiting instruction"
+           << I.getName() << "\n";
+  }
+  return false;
+}
+
 bool SymbolizeLegacyPass::doInitialization(Module &M) {
   return instrumentModule(M);
 }
@@ -256,7 +268,29 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
   return PreservedAnalyses::none();
 }
 
+PreservedAnalyses FPOverflowCheckerPass::run(Function &F,
+                                             FunctionAnalysisManager &) {
+  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
+  // "\n";
+  FPOverflowChecker checker(*F.getParent());
+
+  std::vector<Instruction *> allInstructions;
+  for (auto &I : instructions(F)) {
+    allInstructions.push_back(&I);
+  }
+
+  for (auto *instPtr : allInstructions)
+    checker.visit(instPtr);
+  return PreservedAnalyses::none();
+}
+
 PreservedAnalyses OverflowCheckerPass::run(Module &, ModuleAnalysisManager &) {
+  // errs() << "[OverflowCheckerPass] visiting module\n";
+  return PreservedAnalyses::all();
+}
+
+PreservedAnalyses FPOverflowCheckerPass::run(Module &,
+                                             ModuleAnalysisManager &) {
   // errs() << "[OverflowCheckerPass] visiting module\n";
   return PreservedAnalyses::all();
 }

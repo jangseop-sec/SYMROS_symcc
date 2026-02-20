@@ -10,11 +10,6 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
 
   IRBuilder<> IRB(&I);
 
-  if (I.getOpcode() == Instruction::FDiv) {
-    Value *devidedByZeroCond = getDevidedByZeroCondition(I);
-    overflowCond = IRB.CreateOr(overflowCond, devidedByZeroCond);
-  }
-
   // ==============================
   // control flow split to handle overflow
   // ==============================
@@ -31,7 +26,42 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   IRB.SetInsertPoint(CurBB);
 
   // both goto contBB
-  IRB.CreateCondBr(overflowCond, ContBB, ContBB);
+  BranchInst *CreatedBr = IRB.CreateCondBr(overflowCond, ContBB, ContBB);
+
+  // set metadata to identify
+  LLVMContext &Ctx = I.getContext();
+  MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, "fp_overflow"));
+
+  CreatedBr->setMetadata("symros.check", Tag);
+
+  if (I.getOpcode() == Instruction::FDiv) {
+
+    Value *dividedByZeroCond = getDividedByZeroCondition(I);
+
+    // ==============================
+    // control flow split to handle overflow
+    // ==============================
+
+    BasicBlock *CurBB = I.getParent();
+    // Function *F = CurBB->getParent();
+
+    // split current basic block
+    BasicBlock *ContBB = CurBB->splitBasicBlock(I.getIterator(), "cont");
+
+    // remove the unconditional branch added by splitBasicBlock
+    CurBB->getTerminator()->eraseFromParent();
+
+    IRB.SetInsertPoint(CurBB);
+
+    // both goto contBB
+    BranchInst *CreatedBr = IRB.CreateCondBr(dividedByZeroCond, ContBB, ContBB);
+
+    // set metadata to identify
+    LLVMContext &Ctx = I.getContext();
+    MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, "fp_devided_by_zero"));
+
+    CreatedBr->setMetadata("symros.check", Tag);
+  }
 }
 
 Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I) {
@@ -48,7 +78,7 @@ Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I) {
   return IRB.CreateOr(IsPosInf, IsNegInf);
 }
 
-Value *FPOverflowChecker::getDevidedByZeroCondition(llvm::BinaryOperator &I) {
+Value *FPOverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I) {
   Value *Divisor = I.getOperand(1);
 
   IRBuilder<> IRB(&I);

@@ -5,6 +5,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/ValueMap.h>
 #include <llvm/Support/raw_ostream.h>
 
@@ -19,7 +20,7 @@ public:
 
 private:
   llvm::Value *getOverflowCond(llvm::BinaryOperator &I);
-  llvm::Value *getDevidedByZeroCondition(llvm::BinaryOperator &I);
+  llvm::Value *getDividedByZeroCondition(llvm::BinaryOperator &I);
 };
 
 #endif

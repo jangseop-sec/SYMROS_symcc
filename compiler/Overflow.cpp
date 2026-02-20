@@ -12,6 +12,8 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
     return;
 
   llvm::Value *overflowCond = nullptr;
+  std::string tag = "int_overflow";
+
   if (I.getOpcode() == Instruction::Add) {
     overflowCond = getAddOverflowCondition(I);
   } else if (I.getOpcode() == Instruction::Sub) {
@@ -20,7 +22,8 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
     overflowCond = getMulOverflowCondition(I);
   } else if (I.getOpcode() == Instruction::UDiv ||
              I.getOpcode() == Instruction::SDiv) {
-    overflowCond = getDevidedByZeroCondition(I);
+    overflowCond = getDividedByZeroCondition(I);
+    tag = "int_divided_by_zero";
   } else {
     return;
   }
@@ -43,7 +46,12 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   IRB.SetInsertPoint(CurBB);
 
   // both goto contBB
-  IRB.CreateCondBr(overflowCond, ContBB, ContBB);
+  BranchInst *CreatedBr = IRB.CreateCondBr(overflowCond, ContBB, ContBB);
+
+  // set metadata to identify
+  LLVMContext &Ctx = I.getContext();
+  MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, tag.c_str()));
+  CreatedBr->setMetadata("symros.check", Tag);
 }
 
 Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
@@ -205,7 +213,7 @@ Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value *getDevidedByZeroCondition(llvm::BinaryOperator &I) {
+Value *OverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I) {
 
   Value *Divisor = I.getOperand(1);
 
