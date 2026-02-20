@@ -15,12 +15,12 @@
 #ifndef SYMBOLIZE_H
 #define SYMBOLIZE_H
 
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/ValueMap.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include <optional>
 #include <unordered_map>
 #include <utility>
@@ -30,11 +30,10 @@
 class Symbolizer : public llvm::InstVisitor<Symbolizer> {
 public:
   explicit Symbolizer(llvm::Module &M)
-      : ID(0),
-        runtime(M), dataLayout(M.getDataLayout()),
+      : ID(0), runtime(M), dataLayout(M.getDataLayout()),
         ptrBits(M.getDataLayout().getPointerSizeInBits()),
         intPtrType(M.getDataLayout().getIntPtrType(M.getContext())) {}
-  
+
   uint64_t ID;
 
   /// Insert code to obtain the symbolic expressions for the function arguments.
@@ -148,7 +147,7 @@ private:
 
   // loop information
   llvm::LoopInfo *LI = nullptr;
-  llvm::DenseMap<llvm::Instruction*, llvm::AllocaInst*> LoopSeenFlag;
+  llvm::DenseMap<llvm::Instruction *, llvm::AllocaInst *> LoopSeenFlag;
 
   /// A symbolic input.
   struct Input {
@@ -294,7 +293,8 @@ private:
   }
 
   /// Generate code that makes the solver try an alternative value for V.
-  void tryAlternative(llvm::IRBuilder<> &IRB, llvm::Value *V, llvm::Instruction &I);
+  void tryAlternative(llvm::IRBuilder<> &IRB, llvm::Value *V,
+                      llvm::Instruction &I);
 
   /// Helper to use a pointer to a host object as integer (truncating!).
   ///
