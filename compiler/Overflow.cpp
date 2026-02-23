@@ -11,55 +11,104 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap())
     return;
 
-  llvm::Value *overflowCond = nullptr;
-  std::string tag = "int_overflow";
-
-  if (I.getOpcode() == Instruction::Add) {
-    overflowCond = getAddOverflowCondition(I);
-  } else if (I.getOpcode() == Instruction::Sub) {
-    overflowCond = getSubOverflowCondition(I);
-  } else if (I.getOpcode() == Instruction::Mul) {
-    overflowCond = getMulOverflowCondition(I);
-  } else if (I.getOpcode() == Instruction::UDiv ||
-             I.getOpcode() == Instruction::SDiv) {
-    overflowCond = getDividedByZeroCondition(I);
-    tag = "int_divided_by_zero";
-  } else {
+  if (I.getOpcode() != Instruction::Add && I.getOpcode() != Instruction::Sub &&
+      I.getOpcode() != Instruction::Mul && I.getOpcode() != Instruction::UDiv &&
+      I.getOpcode() != Instruction::SDiv) {
     return;
   }
 
-  IRBuilder<> IRB(&I);
-
-  // ==============================
-  // control flow split to handle overflow
-  // ==============================
-
-  BasicBlock *CurBB = I.getParent();
-  // Function *F = CurBB->getParent();
-
-  // split current basic block
-  BasicBlock *ContBB = CurBB->splitBasicBlock(I.getIterator(), "cont");
-
-  // remove the unconditional branch added by splitBasicBlock
-  CurBB->getTerminator()->eraseFromParent();
-
-  IRB.SetInsertPoint(CurBB);
-
-  // both goto contBB
-  BranchInst *CreatedBr = IRB.CreateCondBr(overflowCond, ContBB, ContBB);
-
-  // set metadata to identify
+  // TODO implement!!!
   LLVMContext &Ctx = I.getContext();
-  MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, tag.c_str()));
-  CreatedBr->setMetadata("symros.check", Tag);
+  Function *F = I.getFunction();
+  BasicBlock *OriginBB = I.getParent();
+
+  Instruction *NextInst = I.getNextNode();
+  if (!NextInst)
+    return;
+
+  BasicBlock *ContBB = OriginBB->splitBasicBlock(NextInst, "orgin_cont");
+
+  OriginBB->getTerminator()->eraseFromParent();
+
+  // basic block construction (overflow / signed bound / unsigned bound)
+  BasicBlock *OverflowCheckBB = BasicBlock::Create(Ctx, "overflow_check", F);
+  BasicBlock *SignedBoundCheckBB =
+      BasicBlock::Create(Ctx, "signed_bound_check", F);
+  BasicBlock *UnsignedBoundCheckBB =
+      BasicBlock::Create(Ctx, "unsigned_bound_check", F);
+
+  IRBuilder<> IRB(OriginBB);
+  IRB.CreateBr(OverflowCheckBB);
+
+  IRBuilder<> IR1(OverflowCheckBB);
+
+  // overflow check branch
+  Value *OverflowCond = nullptr;
+  std::string overflow_tag = "int_overflow";
+
+  switch (I.getOpcode()) {
+  case Instruction::Add:
+    OverflowCond = getAddOverflowCondition(I, IR1);
+    break;
+  case Instruction::Sub:
+    OverflowCond = getSubOverflowCondition(I, IR1);
+    break;
+  case Instruction::Mul:
+    OverflowCond = getMulOverflowCondition(I, IR1);
+    break;
+  case Instruction::SDiv:
+  case Instruction::UDiv:
+    overflow_tag = "int_divided_by_zero";
+    OverflowCond = getDividedByZeroCondition(I, IR1);
+    break;
+  default:
+    break;
+  }
+
+  if (!OverflowCond)
+    return;
+
+  BranchInst *OverflowCheckBranch =
+      IR1.CreateCondBr(OverflowCond, SignedBoundCheckBB, SignedBoundCheckBB);
+
+  // set metadata
+  OverflowCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, overflow_tag.c_str())));
+
+  // signed bound check branch
+  IRBuilder<> IR2(SignedBoundCheckBB);
+
+  Value *SignedBoundCond = getSementicSignedBoundCondition(I, IR2);
+
+  BranchInst *SignedBoundCheckBranch = IR2.CreateCondBr(
+      SignedBoundCond, UnsignedBoundCheckBB, UnsignedBoundCheckBB);
+
+  // set metadata
+  SignedBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_signed_value")));
+
+  // unsigned bound check branch
+  IRBuilder<> IR3(UnsignedBoundCheckBB);
+
+  Value *UnsignedBoundCond = getSementicUnsignedBoundCondition(I, IR3);
+
+  BranchInst *UnsignedBoundCheckBranch =
+      IR3.CreateCondBr(UnsignedBoundCond, ContBB, ContBB);
+
+  // set metadata
+  UnsignedBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_unsigned_value")));
 }
 
-Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I,
+                                                IRBuilder<> &IRB) {
 
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
 
-  IRBuilder<> IRB(&I);
   LLVMContext &Ctx = I.getContext();
   Type *Ty = a->getType();
 
@@ -105,13 +154,12 @@ Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value *OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getSubOverflowCondition(BinaryOperator &I,
+                                                IRBuilder<> &IRB) {
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
 
   LLVMContext &Ctx = I.getContext();
-
-  IRBuilder<> IRB(&I); // ✅ split 전에 생성!
 
   Type *Ty = a->getType();
   assert(Ty->isIntegerTy() && "only integer sub supported");
@@ -159,13 +207,12 @@ Value *OverflowChecker::getSubOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
+Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I,
+                                                IRBuilder<> &IRB) {
   Value *a = I.getOperand(0);
   Value *b = I.getOperand(1);
 
   LLVMContext &Ctx = I.getContext();
-
-  IRBuilder<> IRB(&I); // ✅ 반드시 split 전에 생성
 
   Type *Ty = a->getType();
   assert(Ty->isIntegerTy() && "only integer mul supported");
@@ -213,13 +260,39 @@ Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I) {
   return IRB.CreateOr(signed_overflow, unsigned_overflow);
 }
 
-Value *OverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I) {
+Value *OverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I,
+                                                  IRBuilder<> &IRB) {
 
   Value *Divisor = I.getOperand(1);
-
-  IRBuilder<> IRB(&I);
 
   Value *Zero = ConstantInt::get(Divisor->getType(), 0);
 
   return IRB.CreateICmpEQ(Divisor, Zero);
+}
+
+Value *OverflowChecker::getSementicSignedBoundCondition(llvm::BinaryOperator &I,
+                                                        IRBuilder<> &IRB) {
+
+  Value *Result = &I;
+
+  Value *LowerBound = IRB.CreateICmpSLT(
+      Result, ConstantInt::get(Result->getType(), -sementic_threshold));
+  Value *UpperBound = IRB.CreateICmpSGT(
+      Result, ConstantInt::get(Result->getType(), sementic_threshold));
+
+  return IRB.CreateOr(LowerBound, UpperBound);
+}
+
+Value *
+OverflowChecker::getSementicUnsignedBoundCondition(llvm::BinaryOperator &I,
+                                                   IRBuilder<> &IRB) {
+
+  Value *Result = &I;
+
+  return IRB.CreateICmpUGT(
+      Result, ConstantInt::get(Result->getType(), sementic_threshold));
+}
+
+void OverflowChecker::setSementicThreshold(int sementic_threshold) {
+  this->sementic_threshold = sementic_threshold;
 }

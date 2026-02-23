@@ -15,14 +15,25 @@ class OverflowChecker : public llvm::InstVisitor<OverflowChecker> {
 public:
   explicit OverflowChecker(llvm::Module &M) : runtime(M) {}
   void visitBinaryOperator(llvm::BinaryOperator &I);
+  void setSementicThreshold(int sementic_threshold);
 
   const Runtime runtime;
 
 private:
-  llvm::Value *getAddOverflowCondition(llvm::BinaryOperator &I);
-  llvm::Value *getSubOverflowCondition(llvm::BinaryOperator &I);
-  llvm::Value *getMulOverflowCondition(llvm::BinaryOperator &I);
-  llvm::Value *getDividedByZeroCondition(llvm::BinaryOperator &I);
+  llvm::Value *getAddOverflowCondition(llvm::BinaryOperator &I,
+                                       llvm::IRBuilder<> &IRB);
+  llvm::Value *getSubOverflowCondition(llvm::BinaryOperator &I,
+                                       llvm::IRBuilder<> &IRB);
+  llvm::Value *getMulOverflowCondition(llvm::BinaryOperator &I,
+                                       llvm::IRBuilder<> &IRB);
+  llvm::Value *getDividedByZeroCondition(llvm::BinaryOperator &I,
+                                         llvm::IRBuilder<> &IRB);
+  llvm::Value *getSementicSignedBoundCondition(llvm::BinaryOperator &I,
+                                               llvm::IRBuilder<> &IRB);
+  llvm::Value *getSementicUnsignedBoundCondition(llvm::BinaryOperator &I,
+                                                 llvm::IRBuilder<> &IRB);
+
+  int sementic_threshold;
 };
 
 #endif

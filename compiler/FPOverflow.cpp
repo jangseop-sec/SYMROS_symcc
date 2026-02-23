@@ -6,67 +6,79 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   if (!I.getType()->isFloatingPointTy())
     return;
 
-  Value *overflowCond = getOverflowCond(I);
-
-  IRBuilder<> IRB(&I);
-
-  // ==============================
-  // control flow split to handle overflow
-  // ==============================
-
-  BasicBlock *CurBB = I.getParent();
-  // Function *F = CurBB->getParent();
-
-  // split current basic block
-  BasicBlock *ContBB = CurBB->splitBasicBlock(I.getIterator(), "cont");
-
-  // remove the unconditional branch added by splitBasicBlock
-  CurBB->getTerminator()->eraseFromParent();
-
-  IRB.SetInsertPoint(CurBB);
-
-  // both goto contBB
-  BranchInst *CreatedBr = IRB.CreateCondBr(overflowCond, ContBB, ContBB);
-
-  // set metadata to identify
+  // TODO implement!!!
   LLVMContext &Ctx = I.getContext();
-  MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, "fp_overflow"));
+  Function *F = I.getFunction();
+  BasicBlock *OriginBB = I.getParent();
 
-  CreatedBr->setMetadata("symros.check", Tag);
+  Instruction *NextInst = I.getNextNode();
+  if (!NextInst)
+    return;
+
+  BasicBlock *ContBB = OriginBB->splitBasicBlock(NextInst, "origin_cont");
+
+  OriginBB->getTerminator()->eraseFromParent();
+
+  // new basic blocks for numeric execption check
+  BasicBlock *OverflowCheckBB = BasicBlock::Create(Ctx, "overflow_check", F);
+  BasicBlock *DividedByZeroCheckBB =
+      BasicBlock::Create(Ctx, "devided_by_zero_check", F);
+  BasicBlock *BoundCheckBB = BasicBlock::Create(Ctx, "bound_check", F);
+
+  // connect origin branch to overflow check branch
+  IRBuilder<> IRB(OriginBB);
+  IRB.CreateBr(OverflowCheckBB);
+
+  // overflow check branch
+  IRBuilder<> IR1(OverflowCheckBB);
+
+  Value *OverflowCond = getOverflowCond(I, IR1);
+
+  BranchInst *OverflowCheckBranch =
+      IR1.CreateCondBr(OverflowCond, BoundCheckBB, BoundCheckBB);
+
+  // set metadata
+  OverflowCheckBranch->setMetadata(
+      "symros.check", MDNode::get(Ctx, MDString::get(Ctx, "fp_overflow")));
+
+  // bound check branch
+  IRBuilder<> IR2(BoundCheckBB);
+
+  Value *BoundCond = getSementicBoundCondition(I, IR2);
+  BasicBlock *NextBB = nullptr;
 
   if (I.getOpcode() == Instruction::FDiv) {
+    NextBB = DividedByZeroCheckBB;
+  } else {
+    NextBB = ContBB;
+  }
 
-    Value *dividedByZeroCond = getDividedByZeroCondition(I);
+  BranchInst *BoundCheckBranch = IR2.CreateCondBr(BoundCond, NextBB, NextBB);
 
-    // ==============================
-    // control flow split to handle overflow
-    // ==============================
+  // set metadata
+  BoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "fp_exceptional_value")));
 
-    BasicBlock *CurBB = I.getParent();
-    // Function *F = CurBB->getParent();
+  // divided by zero check (optional)
+  if (I.getOpcode() == Instruction::FDiv) {
+    IRBuilder<> IR3(DividedByZeroCheckBB);
 
-    // split current basic block
-    BasicBlock *ContBB = CurBB->splitBasicBlock(I.getIterator(), "cont");
+    Value *DividedByZeroCond = getDividedByZeroCondition(I, IR3);
 
-    // remove the unconditional branch added by splitBasicBlock
-    CurBB->getTerminator()->eraseFromParent();
+    BranchInst *DividedByZeroCheckBranch =
+        IR3.CreateCondBr(DividedByZeroCond, ContBB, ContBB);
 
-    IRB.SetInsertPoint(CurBB);
-
-    // both goto contBB
-    BranchInst *CreatedBr = IRB.CreateCondBr(dividedByZeroCond, ContBB, ContBB);
-
-    // set metadata to identify
-    LLVMContext &Ctx = I.getContext();
-    MDNode *Tag = MDNode::get(Ctx, MDString::get(Ctx, "fp_devided_by_zero"));
-
-    CreatedBr->setMetadata("symros.check", Tag);
+    // set metadata
+    DividedByZeroCheckBranch->setMetadata(
+        "symros.check",
+        MDNode::get(Ctx, MDString::get(Ctx, "fp_divided_by_zero")));
   }
 }
 
-Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I) {
+Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I,
+                                          llvm::IRBuilder<> &IRB) {
 
-  IRBuilder<> IRB(&I);
   Value *Result = &I;
 
   Value *PosInf = ConstantFP::getInfinity(Result->getType());
@@ -78,12 +90,28 @@ Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I) {
   return IRB.CreateOr(IsPosInf, IsNegInf);
 }
 
-Value *FPOverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I) {
+Value *FPOverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I,
+                                                    llvm::IRBuilder<> &IRB) {
   Value *Divisor = I.getOperand(1);
-
-  IRBuilder<> IRB(&I);
 
   Value *Zero = ConstantFP::get(Divisor->getType(), 0.0);
 
   return IRB.CreateFCmpOEQ(Divisor, Zero);
+}
+
+Value *FPOverflowChecker::getSementicBoundCondition(llvm::BinaryOperator &I,
+                                                    llvm::IRBuilder<> &IRB) {
+
+  Value *Result = &I;
+
+  Value *LowerBound = IRB.CreateFCmpOLT(
+      Result, ConstantFP::get(Result->getType(), -sementic_threshold));
+  Value *UpperBound = IRB.CreateFCmpOGT(
+      Result, ConstantFP::get(Result->getType(), sementic_threshold));
+
+  return IRB.CreateOr(LowerBound, UpperBound);
+}
+
+void FPOverflowChecker::setSementicThreshold(double sementic_threshold) {
+  this->sementic_threshold = sementic_threshold;
 }

@@ -15,12 +15,18 @@ class FPOverflowChecker : public llvm::InstVisitor<FPOverflowChecker> {
 public:
   explicit FPOverflowChecker(llvm::Module &M) : runtime(M) {}
   void visitBinaryOperator(llvm::BinaryOperator &I);
+  void setSementicThreshold(double sementic_threshold);
 
   const Runtime runtime;
 
 private:
-  llvm::Value *getOverflowCond(llvm::BinaryOperator &I);
-  llvm::Value *getDividedByZeroCondition(llvm::BinaryOperator &I);
+  llvm::Value *getOverflowCond(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB);
+  llvm::Value *getDividedByZeroCondition(llvm::BinaryOperator &I,
+                                         llvm::IRBuilder<> &IRB);
+  llvm::Value *getSementicBoundCondition(llvm::BinaryOperator &I,
+                                         llvm::IRBuilder<> &IRB);
+
+  double sementic_threshold;
 };
 
 #endif

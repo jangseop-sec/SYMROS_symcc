@@ -548,10 +548,16 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
           slot += 1000;
         else if (check_type == "int_divided_by_zero")
           slot += 2000;
-        else if (check_type == "fp_overflow")
+        else if (check_type == "int_exceptional_signed_value")
           slot += 3000;
-        else if (check_type == "fp_devided_by_zero")
+        else if (check_type == "int_exceptional_unsigned_value")
           slot += 4000;
+        else if (check_type == "fp_overflow")
+          slot += 5000;
+        else if (check_type == "fp_divided_by_zero")
+          slot += 6000;
+        else if (check_type == "fp_exceptional_value")
+          slot += 7000;
       }
     }
   }

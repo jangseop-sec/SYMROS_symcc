@@ -257,6 +257,7 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
   // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
   // "\n";
   OverflowChecker checker(*F.getParent());
+  checker.setSementicThreshold(10000000);
 
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
@@ -273,6 +274,7 @@ PreservedAnalyses FPOverflowCheckerPass::run(Function &F,
   // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
   // "\n";
   FPOverflowChecker checker(*F.getParent());
+  checker.setSementicThreshold(10000000.0);
 
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
