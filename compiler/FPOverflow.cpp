@@ -40,6 +40,7 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   // set metadata
   OverflowCheckBranch->setMetadata(
       "symros.check", MDNode::get(Ctx, MDString::get(Ctx, "fp_overflow")));
+  OverflowCheckBranch->setDebugLoc(I.getDebugLoc());
 
   // bound check branch
   IRBuilder<> IR2(BoundCheckBB);
@@ -59,6 +60,7 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   BoundCheckBranch->setMetadata(
       "symros.check",
       MDNode::get(Ctx, MDString::get(Ctx, "fp_exceptional_value")));
+  BoundCheckBranch->setDebugLoc(I.getDebugLoc());
 
   // divided by zero check (optional)
   if (I.getOpcode() == Instruction::FDiv) {
@@ -73,6 +75,7 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
     DividedByZeroCheckBranch->setMetadata(
         "symros.check",
         MDNode::get(Ctx, MDString::get(Ctx, "fp_divided_by_zero")));
+    DividedByZeroCheckBranch->setDebugLoc(I.getDebugLoc());
   }
 }
 

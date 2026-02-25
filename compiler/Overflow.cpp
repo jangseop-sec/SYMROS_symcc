@@ -75,6 +75,7 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   OverflowCheckBranch->setMetadata(
       "symros.check",
       MDNode::get(Ctx, MDString::get(Ctx, overflow_tag.c_str())));
+  OverflowCheckBranch->setDebugLoc(I.getDebugLoc());
 
   // signed bound check branch
   IRBuilder<> IR2(SignedBoundCheckBB);
@@ -88,6 +89,7 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   SignedBoundCheckBranch->setMetadata(
       "symros.check",
       MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_signed_value")));
+  SignedBoundCheckBranch->setDebugLoc(I.getDebugLoc());
 
   // unsigned bound check branch
   IRBuilder<> IR3(UnsignedBoundCheckBB);
@@ -101,6 +103,7 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   UnsignedBoundCheckBranch->setMetadata(
       "symros.check",
       MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_unsigned_value")));
+  UnsignedBoundCheckBranch->setDebugLoc(I.getDebugLoc());
 }
 
 Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I,
