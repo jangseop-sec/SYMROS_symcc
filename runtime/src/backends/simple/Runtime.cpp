@@ -629,46 +629,46 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
       string_not_eq_constraints.clear();
       string_taken = true;
 
-      if (taken == 1) string_taken = false;
+      if (taken == 1)
+        string_taken = false;
       string_eq_constraints.push_back(not_constraint);
       string_not_eq_constraints.push_back(constraint);
     } else {
       size_t cond_num = line - strcmp_start_line + 1;
-      if (taken == 1) string_taken = false;
+      if (taken == 1)
+        string_taken = false;
       string_eq_constraints.push_back(not_constraint);
       string_not_eq_constraints.push_back(constraint);
-      
+
       // all string constraints are collected
       if (string_eq_constraints.size() == cond_num) {
         if (string_taken) {
-          Z3_ast final_constraint = Z3_mk_and(
-            g_context,
-            string_eq_constraints.size(),
-            string_eq_constraints.data()
-          );
+          Z3_ast final_constraint =
+              Z3_mk_and(g_context, string_eq_constraints.size(),
+                        string_eq_constraints.data());
           Z3_inc_ref(g_context, final_constraint);
           Z3_solver_assert(g_context, g_solver, final_constraint);
-          fprintf(g_log,
-            "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
-            "smt====\n",
-            slot_id, 0L, string_taken, filename, line,
-            Z3_solver_to_string(g_context, g_solver));
+          fprintf(
+              g_log,
+              "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
+              "smt====\n",
+              slot_id, 0L, string_taken, filename, line,
+              Z3_solver_to_string(g_context, g_solver));
           fflush(g_log);
           Z3_solver_pop(g_context, g_solver, 1);
           Z3_dec_ref(g_context, final_constraint);
         } else {
-          Z3_ast final_constraint = Z3_mk_or(
-            g_context,
-            string_not_eq_constraints.size(),
-            string_not_eq_constraints.data()
-          );
+          Z3_ast final_constraint =
+              Z3_mk_or(g_context, string_not_eq_constraints.size(),
+                       string_not_eq_constraints.data());
           Z3_inc_ref(g_context, final_constraint);
           Z3_solver_assert(g_context, g_solver, final_constraint);
-          fprintf(g_log,
-            "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
-            "smt====\n",
-            slot_id, 0L, string_taken, filename, line,
-            Z3_solver_to_string(g_context, g_solver));
+          fprintf(
+              g_log,
+              "Trying to solve:\nLocation:%d.%ld.%d.%s.%d\nSMT:%s\n====end of "
+              "smt====\n",
+              slot_id, 0L, string_taken, filename, line,
+              Z3_solver_to_string(g_context, g_solver));
           fflush(g_log);
           Z3_solver_pop(g_context, g_solver, 1);
           Z3_dec_ref(g_context, final_constraint);
@@ -687,7 +687,6 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
     fflush(g_log);
     Z3_solver_pop(g_context, g_solver, 1);
   }
-
 
   Z3_dec_ref(g_context, constraint);
   Z3_dec_ref(g_context, not_constraint);
