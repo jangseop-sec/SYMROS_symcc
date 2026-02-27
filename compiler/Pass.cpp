@@ -57,6 +57,7 @@ using namespace llvm;
 
 char SymbolizeLegacyPass::ID = 0;
 char OverflowCheckerLegacyPass::ID = 0;
+char FPOverflowCheckerLegacyPass::ID = 0;
 
 namespace {
 
@@ -257,7 +258,7 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
   // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
   // "\n";
   OverflowChecker checker(*F.getParent());
-  checker.setSementicThreshold(10000000);
+  checker.setSementicThreshold(100);
 
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
@@ -274,7 +275,7 @@ PreservedAnalyses FPOverflowCheckerPass::run(Function &F,
   // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
   // "\n";
   FPOverflowChecker checker(*F.getParent());
-  checker.setSementicThreshold(10000000.0);
+  checker.setSementicThreshold(100.0);
 
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {

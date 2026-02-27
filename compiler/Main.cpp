@@ -52,11 +52,13 @@ void addSymbolizeLegacyPass(const PassManagerBuilder & /* unused */,
   PM.add(createLowerAtomicPass());
   PM.add(new SymbolizeLegacyPass());
   PM.add(new OverflowCheckerLegacyPass());
+  PM.add(new FPOverflowCheckerLegacyPass());
 }
 
 // Make the pass known to opt.
 static RegisterPass<SymbolizeLegacyPass> X("symbolize", "Symbolization Pass");
 static RegisterPass<OverflowCheckerLegacyPass> W("overflow-checker", "Overflow Checker Pass");
+static RegisterPass<FPOverflowCheckerLegacyPass> V("fp-overflow-checker", "FP Overflow Checker Pass");
 // Tell frontends to run the pass automatically.
 static struct RegisterStandardPasses Y(PassManagerBuilder::EP_VectorizerStart,
                                        addSymbolizeLegacyPass);
@@ -82,12 +84,14 @@ PassPluginLibraryInfo getSymbolizePluginInfo() {
             PB.registerPipelineStartEPCallback(
                 [](ModulePassManager &PM, OptimizationLevel) {
                   PM.addPass(OverflowCheckerPass());
+                  PM.addPass(FPOverflowCheckerPass());
                   PM.addPass(SymbolizePass());
                 });
             PB.registerVectorizerStartEPCallback(
                 [](FunctionPassManager &PM, OptimizationLevel) {
                   PM.addPass(ScalarizerPass());
                   PM.addPass(LowerAtomicPass());
+                  PM.addPass(FPOverflowCheckerPass());
                   PM.addPass(OverflowCheckerPass());
                   PM.addPass(SymbolizePass());
                 });
