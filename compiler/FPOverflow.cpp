@@ -46,15 +46,15 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   IRBuilder<> IR2(BoundCheckBB);
 
   Value *BoundCond = getSementicBoundCondition(I, IR2);
-  BasicBlock *NextBB = nullptr;
+  // BasicBlock *NextBB = nullptr;
 
-  if (I.getOpcode() == Instruction::FDiv) {
-    NextBB = DividedByZeroCheckBB;
-  } else {
-    NextBB = ContBB;
-  }
+  // if (I.getOpcode() == Instruction::FDiv) {
+  //   NextBB = DividedByZeroCheckBB;
+  // } else {
+  //   NextBB = ContBB;
+  // }
 
-  BranchInst *BoundCheckBranch = IR2.CreateCondBr(BoundCond, NextBB, NextBB);
+  BranchInst *BoundCheckBranch = IR2.CreateCondBr(BoundCond, DividedByZeroCheckBB, DividedByZeroCheckBB);
 
   // set metadata
   BoundCheckBranch->setMetadata(
@@ -63,20 +63,20 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   BoundCheckBranch->setDebugLoc(I.getDebugLoc());
 
   // divided by zero check (optional)
-  if (I.getOpcode() == Instruction::FDiv) {
-    IRBuilder<> IR3(DividedByZeroCheckBB);
+  // if (I.getOpcode() == Instruction::FDiv) {
+  IRBuilder<> IR3(DividedByZeroCheckBB);
 
-    Value *DividedByZeroCond = getDividedByZeroCondition(I, IR3);
+  Value *DividedByZeroCond = getDividedByZeroCondition(I, IR3);
 
-    BranchInst *DividedByZeroCheckBranch =
-        IR3.CreateCondBr(DividedByZeroCond, ContBB, ContBB);
+  BranchInst *DividedByZeroCheckBranch =
+      IR3.CreateCondBr(DividedByZeroCond, ContBB, ContBB);
 
-    // set metadata
-    DividedByZeroCheckBranch->setMetadata(
-        "symros.check",
-        MDNode::get(Ctx, MDString::get(Ctx, "fp_divided_by_zero")));
-    DividedByZeroCheckBranch->setDebugLoc(I.getDebugLoc());
-  }
+  // set metadata
+  DividedByZeroCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "fp_divided_by_zero")));
+  DividedByZeroCheckBranch->setDebugLoc(I.getDebugLoc());
+  // }
 }
 
 Value *FPOverflowChecker::getOverflowCond(llvm::BinaryOperator &I,
