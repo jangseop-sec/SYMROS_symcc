@@ -587,7 +587,7 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
         }
       }
 
-      if (true) {
+      if (false) {
 
         // [NEW] 이미 이 branch에 guard를 삽입했으면 다시 하지 않기 (무한 split
         // 방지)
