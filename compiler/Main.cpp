@@ -85,20 +85,16 @@ PassPluginLibraryInfo getSymbolizePluginInfo() {
             // module passes at the start of the vectorizer, hence the split.)
             PB.registerPipelineStartEPCallback(
                 [](ModulePassManager &PM, OptimizationLevel) {
-#ifdef SYMROS_ENABLE_CHECKER
                   PM.addPass(OverflowCheckerPass());
                   PM.addPass(FPOverflowCheckerPass());
-#endif
                   PM.addPass(SymbolizePass());
                 });
             PB.registerVectorizerStartEPCallback(
                 [](FunctionPassManager &PM, OptimizationLevel) {
                   PM.addPass(ScalarizerPass());
                   PM.addPass(LowerAtomicPass());
-#ifdef SYMROS_ENABLE_CHECKER
                   PM.addPass(OverflowCheckerPass());
                   PM.addPass(FPOverflowCheckerPass());
-#endif
                   PM.addPass(SymbolizePass());
                 });
           }};
