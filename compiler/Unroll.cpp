@@ -14,7 +14,6 @@ bool Unroll::unroll() {
     UnrollLoopOptions ULO;
     ULO.Count = 2;
     ULO.Force = true;
-    ULO.Runtime = false;
     ULO.ForgetAllSCEV = false;
 
     Changed |= (UnrollLoop(L, ULO, &LI, &SE, &DT, &AC, &TTI, &ORE, false) !=
