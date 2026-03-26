@@ -50,10 +50,8 @@ void addSymbolizeLegacyPass(const PassManagerBuilder & /* unused */,
                             legacy::PassManagerBase &PM) {
   PM.add(createScalarizerPass());
   PM.add(createLowerAtomicPass());
-#ifdef SYMROS_ENABLE_CHECKER
   PM.add(new OverflowCheckerLegacyPass());
   PM.add(new FPOverflowCheckerLegacyPass());
-#endif
   PM.add(new SymbolizeLegacyPass());
 }
 

@@ -223,24 +223,37 @@ bool instrumentFunction(Function &F, llvm::LoopInfo *LI) {
 
 bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   // OverflowChecker checker;
-  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName()
-  // << "\n";
+  errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
+  OverflowChecker checker(*F.getParent());
+  checker.setSementicThreshold(100);
+
+  std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
-    errs() << "[OverflowCheckerLegacyPass] visiting instruction" << I.getName()
-           << "\n";
+    allInstructions.push_back(&I);
   }
-  return false;
+
+  for (auto *instPtr : allInstructions)
+    checker.visit(instPtr);
+
+  return true;
 }
 
 bool FPOverflowCheckerLegacyPass::runOnFunction(Function &F) {
   // OverflowChecker checker;
-  // errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName()
-  // << "\n";
+  errs() << "[FPOverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
+  FPOverflowChecker checker(*F.getParent());
+  checker.setSementicThreshold(100.0);
+
+  std::vector<Instruction *> allInstructions;
+
   for (auto &I : instructions(F)) {
-    errs() << "[FPOverflowCheckerLegacyPass] visiting instruction"
-           << I.getName() << "\n";
+    allInstructions.push_back(&I);
   }
-  return false;
+
+  for (auto *instPtr : allInstructions) {
+    checker.visit(instPtr);
+  }
+  return true;
 }
 
 bool SymbolizeLegacyPass::doInitialization(Module &M) {
@@ -255,8 +268,7 @@ bool SymbolizeLegacyPass::runOnFunction(Function &F) {
 
 PreservedAnalyses OverflowCheckerPass::run(Function &F,
                                            FunctionAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
-  // "\n";
+  errs() << "[OverflowCheckerPass] visiting function: " << F.getName() << "\n";
   OverflowChecker checker(*F.getParent());
   checker.setSementicThreshold(100);
 
@@ -272,8 +284,7 @@ PreservedAnalyses OverflowCheckerPass::run(Function &F,
 
 PreservedAnalyses FPOverflowCheckerPass::run(Function &F,
                                              FunctionAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting function: " << F.getName() <<
-  // "\n";
+  errs() << "[FPOverflowCheckerPass] visiting function: " << F.getName() << "\n";
   FPOverflowChecker checker(*F.getParent());
   checker.setSementicThreshold(100.0);
 
@@ -288,13 +299,13 @@ PreservedAnalyses FPOverflowCheckerPass::run(Function &F,
 }
 
 PreservedAnalyses OverflowCheckerPass::run(Module &, ModuleAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting module\n";
+  errs() << "[OverflowCheckerPass] visiting module\n";
   return PreservedAnalyses::all();
 }
 
 PreservedAnalyses FPOverflowCheckerPass::run(Module &,
                                              ModuleAnalysisManager &) {
-  // errs() << "[OverflowCheckerPass] visiting module\n";
+  errs() << "[FPOverflowCheckerPass] visiting module\n";
   return PreservedAnalyses::all();
 }
 
