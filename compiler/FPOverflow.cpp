@@ -3,7 +3,25 @@
 using namespace llvm;
 
 void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
+  // result check
   if (!I.getType()->isFloatingPointTy())
+    return;
+
+  // operand check
+  if (!I.getOperand(0)->getType()->isFloatingPointTy() ||
+      !I.getOperand(1)->getType()->isFloatingPointTy())
+    return;
+
+  // opcode filter
+  if (I.getOpcode() != Instruction::FAdd &&
+      I.getOpcode() != Instruction::FSub &&
+      I.getOpcode() != Instruction::FMul &&
+      I.getOpcode() != Instruction::FDiv &&
+      I.getOpcode() != Instruction::FRem)
+    return;
+
+  // nnan, ninf -> compiler assumption 
+  if (I.hasNoNaNs() && I.hasNoInfs())
     return;
 
   // TODO implement!!!

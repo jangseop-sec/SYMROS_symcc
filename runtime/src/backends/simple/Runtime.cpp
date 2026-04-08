@@ -46,9 +46,6 @@
    it in C for now because that makes it easier to experiment with new features,
    but I expect that a lot of the functions will stay so simple that we can
    generate the corresponding bitcode directly in the compiler pass. */
-#define Z3_dec_ref(ctx, x)                                                     \
-  do {                                                                         \
-  } while (0)
 
 namespace {
 
@@ -394,57 +391,147 @@ Z3_ast _sym_build_float_ordered(Z3_ast a, Z3_ast b) {
 
 Z3_ast _sym_build_float_unordered(Z3_ast a, Z3_ast b) {
   Z3_ast checks[2];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[1]);
+
+  Z3_ast result = Z3_mk_or(g_context, 2, checks);
+
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_greater_than(Z3_ast a, Z3_ast b) {
   Z3_ast checks[3];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+
   checks[2] = _sym_build_float_ordered_greater_than(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_greater_equal(Z3_ast a, Z3_ast b) {
   Z3_ast checks[3];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+
   checks[2] = _sym_build_float_ordered_greater_equal(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_less_than(Z3_ast a, Z3_ast b) {
   Z3_ast checks[3];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+
   checks[2] = _sym_build_float_ordered_less_than(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_less_equal(Z3_ast a, Z3_ast b) {
   Z3_ast checks[3];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+
   checks[2] = _sym_build_float_ordered_less_equal(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_equal(Z3_ast a, Z3_ast b) {
   Z3_ast checks[3];
+
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+
   checks[2] = _sym_build_float_ordered_equal(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_float_unordered_not_equal(Z3_ast a, Z3_ast b) {
+  
+  if (a == NULL || b == NULL) return NULL;
+
   Z3_ast checks[3];
+  
   checks[0] = Z3_mk_fpa_is_nan(g_context, a);
+  Z3_inc_ref(g_context, checks[0]);
+  
   checks[1] = Z3_mk_fpa_is_nan(g_context, b);
+  Z3_inc_ref(g_context, checks[1]);
+  
   checks[2] = _sym_build_float_ordered_not_equal(a, b);
-  return registerExpression(Z3_mk_or(g_context, 2, checks));
+  Z3_inc_ref(g_context, checks[2]);
+
+  Z3_ast result = Z3_mk_or(g_context, 3, checks);
+  
+  Z3_dec_ref(g_context, checks[0]);
+  Z3_dec_ref(g_context, checks[1]);
+  Z3_dec_ref(g_context, checks[2]);
+
+  return registerExpression(result);
 }
 
 Z3_ast _sym_build_sext(Z3_ast expr, uint8_t bits) {

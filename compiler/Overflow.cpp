@@ -227,17 +227,17 @@ Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I,
 
   Value *ZERO = ConstantInt::get(Ty, 0);
 
-  // a != 0
+  // for safe check
   Value *a_ne_0 = IRB.CreateICmpNE(a, ZERO);
 
-  // prod = a * b
   Value *prod = IRB.CreateMul(a, b);
 
-  // (prod / a)
-  Value *div = IRB.CreateSDiv(prod, a);
+  // a == 0이면 divisor를 1로 대체 → SIGFPE 방지
+  Value *safe_a = IRB.CreateSelect(a_ne_0, a, ConstantInt::get(Ty, 1));
+  Value *div = IRB.CreateSDiv(prod, safe_a);  // a==0일 땐 1로 나눔
+  Value *div_ne_b = IRB.CreateICmpNE(div, b);
+  Value *signed_overflow = IRB.CreateAnd(a_ne_0, div_ne_b);
 
-  // (prod / a != b)
-  Value *signed_overflow = IRB.CreateAnd(a_ne_0, IRB.CreateICmpNE(div, b));
 
   // ============================
   // Unsigned overflow
@@ -246,15 +246,11 @@ Value *OverflowChecker::getMulOverflowCondition(BinaryOperator &I,
   APInt UIntMax = APInt::getMaxValue(BitWidth);
   Value *UINT_MAX_V = ConstantInt::get(Ctx, UIntMax);
 
-  // b != 0
   Value *b_ne_0 = IRB.CreateICmpNE(b, ZERO);
+  Value *safe_b = IRB.CreateSelect(b_ne_0, b, ConstantInt::get(Ty, 1));
+  Value *umax_div_b = IRB.CreateUDiv(UINT_MAX_V, safe_b);  // b==0일 땐 1로 나눔
+  Value *unsigned_overflow = IRB.CreateAnd(b_ne_0, IRB.CreateICmpUGT(a, umax_div_b));
 
-  // UINT_MAX / b
-  Value *umax_div_b = IRB.CreateUDiv(UINT_MAX_V, b);
-
-  // a > (UINT_MAX / b)
-  Value *unsigned_overflow =
-      IRB.CreateAnd(b_ne_0, IRB.CreateICmpUGT(a, umax_div_b));
 
   // ============================
   // final condtion
