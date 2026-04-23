@@ -36,6 +36,16 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
       BasicBlock::Create(Ctx, "signed_bound_check", F);
   BasicBlock *UnsignedBoundCheckBB =
       BasicBlock::Create(Ctx, "unsigned_bound_check", F);
+  BasicBlock *SignedMinusBoundCheckBB =
+      BasicBlock::Create(Ctx, "signed_minus_bound_check", F);
+  BasicBlock *MaxBoundCheckBB =
+      BasicBlock::Create(Ctx, "max_bound_check", F);
+  BasicBlock *MinBoundCheckBB =
+      BasicBlock::Create(Ctx, "min_bound_check", F);
+  BasicBlock *SignedMaxBoundCheckBB =
+      BasicBlock::Create(Ctx, "signed_max_bound_check", F);
+  BasicBlock *SignedMinBoundCheckBB =
+      BasicBlock::Create(Ctx, "signed_min_bound_check", F);
 
   IRBuilder<> IRB(OriginBB);
   IRB.CreateBr(OverflowCheckBB);
@@ -97,13 +107,73 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   Value *UnsignedBoundCond = getSementicUnsignedBoundCondition(I, IR3);
 
   BranchInst *UnsignedBoundCheckBranch =
-      IR3.CreateCondBr(UnsignedBoundCond, ContBB, ContBB);
+      IR3.CreateCondBr(UnsignedBoundCond, SignedMinusBoundCheckBB, SignedMinusBoundCheckBB);
 
   // set metadata
   UnsignedBoundCheckBranch->setMetadata(
       "symros.check",
       MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_unsigned_value")));
   UnsignedBoundCheckBranch->setDebugLoc(I.getDebugLoc());
+
+  // signed minus bound check branch
+  IRBuilder<> IR4(SignedMinusBoundCheckBB);
+  Value *SignedMinusBoundCond = getSementicSignedMinusBoundCondition(I, IR4);
+  BranchInst *SignedMinusBoundCheckBranch =
+      IR4.CreateCondBr(SignedMinusBoundCond, MaxBoundCheckBB, MaxBoundCheckBB);
+  
+  // set metadata
+  SignedMinusBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_signed_minus_value")));
+  SignedMinusBoundCheckBranch->setDebugLoc(I.getDebugLoc());
+
+  // max bound check branch
+  IRBuilder<> IR5(MaxBoundCheckBB);
+  Value *MaxBoundCond = getSementicMaxBoundCondition(I, IR5);
+  BranchInst *MaxBoundCheckBranch =
+      IR5.CreateCondBr(MaxBoundCond, MinBoundCheckBB, MinBoundCheckBB);
+
+  // set metadata
+  MaxBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_max_value")));
+  MaxBoundCheckBranch->setDebugLoc(I.getDebugLoc());  
+
+  // min bound check branch
+  IRBuilder<> IR6(MinBoundCheckBB);
+  Value *MinBoundCond = getSementicMinBoundCondition(I, IR6);
+  BranchInst *MinBoundCheckBranch =
+      IR6.CreateCondBr(MinBoundCond, SignedMaxBoundCheckBB, SignedMaxBoundCheckBB); 
+  
+  // set metadata
+  MinBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_min_value")));
+  MinBoundCheckBranch->setDebugLoc(I.getDebugLoc());
+
+  // signed max bound check branch
+  IRBuilder<> IR7(SignedMaxBoundCheckBB);
+  Value *SignedMaxBoundCond = getSementicSignedMaxBoundCondition(I, IR7);
+  BranchInst *SignedMaxBoundCheckBranch =
+      IR7.CreateCondBr(SignedMaxBoundCond, SignedMinBoundCheckBB, SignedMinBoundCheckBB);
+  
+  // set metadata
+  SignedMaxBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_signed_max_value")));
+  SignedMaxBoundCheckBranch->setDebugLoc(I.getDebugLoc());
+
+  // signed min bound check branch
+  IRBuilder<> IR8(SignedMinBoundCheckBB);
+  Value *SignedMinBoundCond = getSementicSignedMinBoundCondition(I, IR8);
+  BranchInst *SignedMinBoundCheckBranch =
+      IR8.CreateCondBr(SignedMinBoundCond, ContBB, ContBB);
+  
+  // set metadata
+  SignedMinBoundCheckBranch->setMetadata(
+      "symros.check",
+      MDNode::get(Ctx, MDString::get(Ctx, "int_exceptional_signed_min_value")));
+  SignedMinBoundCheckBranch->setDebugLoc(I.getDebugLoc());
 }
 
 Value *OverflowChecker::getAddOverflowCondition(BinaryOperator &I,
@@ -271,15 +341,9 @@ Value *OverflowChecker::getDividedByZeroCondition(llvm::BinaryOperator &I,
 
 Value *OverflowChecker::getSementicSignedBoundCondition(llvm::BinaryOperator &I,
                                                         IRBuilder<> &IRB) {
-
   Value *Result = &I;
-
-  Value *LowerBound = IRB.CreateICmpSLT(
-      Result, ConstantInt::get(Result->getType(), -sementic_threshold));
-  Value *UpperBound = IRB.CreateICmpSGT(
+  return IRB.CreateICmpSGT(
       Result, ConstantInt::get(Result->getType(), sementic_threshold));
-
-  return IRB.CreateOr(LowerBound, UpperBound);
 }
 
 Value *
@@ -290,6 +354,51 @@ OverflowChecker::getSementicUnsignedBoundCondition(llvm::BinaryOperator &I,
 
   return IRB.CreateICmpUGT(
       Result, ConstantInt::get(Result->getType(), sementic_threshold));
+}
+
+Value*
+OverflowChecker::getSementicSignedMinusBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
+  Value *Result = &I;
+
+  return IRB.CreateICmpSLT(
+      Result, ConstantInt::get(Result->getType(), -sementic_threshold));
+
+}
+
+Value *
+OverflowChecker::getSementicMaxBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
+  Value *Result = &I;
+
+  APInt MaxValue = APInt::getMaxValue(Result->getType()->getIntegerBitWidth());
+  return IRB.CreateICmpUGT(
+      Result, ConstantInt::get(Result->getType(), MaxValue - sementic_tolerance));
+}
+
+Value *OverflowChecker::getSementicMinBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
+  Value *Result = &I;
+  APInt MinValue = APInt::getMinValue(Result->getType()->getIntegerBitWidth());
+  return IRB.CreateICmpULT(
+      Result, ConstantInt::get(Result->getType(), MinValue + sementic_tolerance));
+}
+
+Value *OverflowChecker::getSementicSignedMaxBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
+  Value *Result = &I;
+
+  APInt SignedMaxValue = APInt::getSignedMaxValue(Result->getType()->getIntegerBitWidth());
+  return IRB.CreateICmpSGT(
+      Result, ConstantInt::get(Result->getType(), SignedMaxValue - sementic_tolerance));
+}
+
+Value *OverflowChecker::getSementicSignedMinBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
+  Value *Result = &I;
+  APInt SignedMinValue = APInt::getSignedMinValue(Result->getType()->getIntegerBitWidth());
+  return IRB.CreateICmpSLT(
+      Result, ConstantInt::get(Result->getType(), SignedMinValue + sementic_tolerance));
+}
+
+
+void OverflowChecker::setSementicTolerance(int sementic_tolerance) {
+  this->sementic_threshold = sementic_tolerance;
 }
 
 void OverflowChecker::setSementicThreshold(int sementic_threshold) {

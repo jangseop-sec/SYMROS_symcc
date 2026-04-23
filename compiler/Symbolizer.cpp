@@ -558,6 +558,22 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
           slot += 6000;
         else if (check_type == "fp_exceptional_value")
           slot += 7000;
+        else if (check_type == "int_exceptional_signed_minus_value")
+          slot += 8000;
+        else if (check_type == "int_exceptional_max_value")
+          slot += 9000;
+        else if (check_type == "int_exceptional_min_value")
+          slot += 10000;
+        else if (check_type == "int_exceptional_signed_max_value")
+          slot += 11000;
+        else if (check_type == "int_exceptional_signed_min_value")
+          slot += 12000;
+        else if (check_type == "fp_exceptional_minus_value")
+          slot += 13000;
+        else if (check_type == "fp_exceptional_max_value")
+          slot += 14000;
+        else if (check_type == "fp_exceptional_min_value")
+          slot += 15000;
       }
     }
   }
