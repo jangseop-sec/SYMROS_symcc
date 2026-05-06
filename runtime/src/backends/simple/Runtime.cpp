@@ -770,7 +770,9 @@ void _sym_push_path_constraint_with_loc(Z3_ast constraint, int taken,
             "smt====\n",
             slot_id, 0L, taken, filename, line,
             Z3_solver_to_string(g_context, g_solver));
-
+    // fprintf(g_log,
+    //         "Location:%d.%ld.%d.%s.%d\n",
+    //         slot_id, 0L, taken, filename, line);
     fflush(g_log);
     Z3_solver_pop(g_context, g_solver, 1);
   }

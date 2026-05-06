@@ -50,8 +50,8 @@ void addSymbolizeLegacyPass(const PassManagerBuilder & /* unused */,
                             legacy::PassManagerBase &PM) {
   PM.add(createScalarizerPass());
   PM.add(createLowerAtomicPass());
-  PM.add(new OverflowCheckerLegacyPass());
-  PM.add(new FPOverflowCheckerLegacyPass());
+  // PM.add(new OverflowCheckerLegacyPass());
+  // PM.add(new FPOverflowCheckerLegacyPass());
   PM.add(new SymbolizeLegacyPass());
 }
 
@@ -83,16 +83,16 @@ PassPluginLibraryInfo getSymbolizePluginInfo() {
             // module passes at the start of the vectorizer, hence the split.)
             PB.registerPipelineStartEPCallback(
                 [](ModulePassManager &PM, OptimizationLevel) {
-                  PM.addPass(OverflowCheckerPass());
-                  PM.addPass(FPOverflowCheckerPass());
+                  // PM.addPass(OverflowCheckerPass());
+                  // PM.addPass(FPOverflowCheckerPass());
                   PM.addPass(SymbolizePass());
                 });
             PB.registerVectorizerStartEPCallback(
                 [](FunctionPassManager &PM, OptimizationLevel) {
                   PM.addPass(ScalarizerPass());
                   PM.addPass(LowerAtomicPass());
-                  PM.addPass(OverflowCheckerPass());
-                  PM.addPass(FPOverflowCheckerPass());
+                  // PM.addPass(OverflowCheckerPass());
+                  // PM.addPass(FPOverflowCheckerPass());
                   PM.addPass(SymbolizePass());
                 });
           }};

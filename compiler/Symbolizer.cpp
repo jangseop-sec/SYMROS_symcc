@@ -558,6 +558,22 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
           slot += 6000;
         else if (check_type == "fp_exceptional_value")
           slot += 7000;
+        else if (check_type == "int_exceptional_signed_minus_value")
+          slot += 8000;
+        else if (check_type == "int_exceptional_max_value")
+          slot += 9000;
+        else if (check_type == "int_exceptional_min_value")
+          slot += 10000;
+        else if (check_type == "int_exceptional_signed_max_value")
+          slot += 11000;
+        else if (check_type == "int_exceptional_signed_min_value")
+          slot += 12000;
+        else if (check_type == "fp_exceptional_minus_value")
+          slot += 13000;
+        else if (check_type == "fp_exceptional_max_value")
+          slot += 14000;
+        else if (check_type == "fp_exceptional_min_value")
+          slot += 15000;
       }
     }
   }
@@ -584,76 +600,73 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
         if (S0In ^ S1In) {
           errs() << "loop condition is identified!\n";
           slotVal = IRB.getInt32(-1);
-        }
-      }
 
-      if (false) {
+          // [NEW] 이미 이 branch에 guard를 삽입했으면 다시 하지 않기 (무한 split
+          // 방지)
+          if (I.getMetadata("symcc.loop.guard"))
+            return;
 
-        // [NEW] 이미 이 branch에 guard를 삽입했으면 다시 하지 않기 (무한 split
-        // 방지)
-        if (I.getMetadata("symcc.loop.guard"))
+          // [NEW] split 전에 cond를 잡아둠 (dominance 안전)
+          // llvm::Value *Cond = I.getCondition();
+
+          if (LoopSeenFlag.find(&I) == LoopSeenFlag.end()) {
+            llvm::Function *F0 = BB->getParent();
+
+            llvm::IRBuilder<> EntryIRB(
+                &*F0->getEntryBlock().getFirstInsertionPt());
+
+            auto *Flag =
+                EntryIRB.CreateAlloca(EntryIRB.getInt1Ty(), nullptr, "loop_seen");
+
+            EntryIRB.CreateStore(EntryIRB.getFalse(), Flag);
+
+            LoopSeenFlag[&I] = Flag;
+          }
+
+          llvm::Instruction *SplitPt = &I;
+          llvm::BasicBlock *OriginBB = BB;
+          llvm::BasicBlock *ContBB =
+              OriginBB->splitBasicBlock(SplitPt, "after_loop_guard");
+
+          llvm::Function *F = OriginBB->getParent();
+          llvm::LLVMContext &Ctx = F->getContext();
+
+          llvm::BasicBlock *PushBB =
+              llvm::BasicBlock::Create(Ctx, "loop_do_push", F, ContBB);
+          llvm::BasicBlock *NoPushBB =
+              llvm::BasicBlock::Create(Ctx, "loop_skip_push", F, ContBB);
+
+          llvm::Instruction *OldTerm = OriginBB->getTerminator();
+          llvm::IRBuilder<> IRB(OldTerm);
+
+          llvm::Value *Seen = IRB.CreateLoad(IRB.getInt1Ty(), LoopSeenFlag[&I]);
+
+          IRB.CreateCondBr(Seen, NoPushBB, PushBB);
+          OldTerm->eraseFromParent();
+
+          llvm::IRBuilder<> PushIRB(PushBB);
+
+          I.setMetadata("symcc.loop.guard",
+                        llvm::MDNode::get(I.getContext(), {}));
+
+          auto runtimeCall =
+              buildRuntimeCall(PushIRB, runtime.pushPathConstraintWithLoc,
+                              {{I.getCondition(), true},
+                                {I.getCondition(), false},
+                                {getTargetPreferredInt(&I), false},
+                                {filenameVal, false},
+                                {lineVal, false},
+                                {slotVal, false}});
+          registerSymbolicComputation(runtimeCall);
+
+          PushIRB.CreateStore(PushIRB.getTrue(), LoopSeenFlag[&I]);
+          PushIRB.CreateBr(ContBB);
+
+          llvm::IRBuilder<> NoPushIRB(NoPushBB);
+          NoPushIRB.CreateBr(ContBB);
+
           return;
-
-        // [NEW] split 전에 cond를 잡아둠 (dominance 안전)
-        // llvm::Value *Cond = I.getCondition();
-
-        if (LoopSeenFlag.find(&I) == LoopSeenFlag.end()) {
-          llvm::Function *F0 = BB->getParent();
-
-          llvm::IRBuilder<> EntryIRB(
-              &*F0->getEntryBlock().getFirstInsertionPt());
-
-          auto *Flag =
-              EntryIRB.CreateAlloca(EntryIRB.getInt1Ty(), nullptr, "loop_seen");
-
-          EntryIRB.CreateStore(EntryIRB.getFalse(), Flag);
-
-          LoopSeenFlag[&I] = Flag;
         }
-
-        llvm::Instruction *SplitPt = &I;
-        llvm::BasicBlock *OriginBB = BB;
-        llvm::BasicBlock *ContBB =
-            OriginBB->splitBasicBlock(SplitPt, "after_loop_guard");
-
-        llvm::Function *F = OriginBB->getParent();
-        llvm::LLVMContext &Ctx = F->getContext();
-
-        llvm::BasicBlock *PushBB =
-            llvm::BasicBlock::Create(Ctx, "loop_do_push", F, ContBB);
-        llvm::BasicBlock *NoPushBB =
-            llvm::BasicBlock::Create(Ctx, "loop_skip_push", F, ContBB);
-
-        llvm::Instruction *OldTerm = OriginBB->getTerminator();
-        llvm::IRBuilder<> IRB(OldTerm);
-
-        llvm::Value *Seen = IRB.CreateLoad(IRB.getInt1Ty(), LoopSeenFlag[&I]);
-
-        IRB.CreateCondBr(Seen, NoPushBB, PushBB);
-        OldTerm->eraseFromParent();
-
-        llvm::IRBuilder<> PushIRB(PushBB);
-
-        I.setMetadata("symcc.loop.guard",
-                      llvm::MDNode::get(I.getContext(), {}));
-
-        auto runtimeCall =
-            buildRuntimeCall(PushIRB, runtime.pushPathConstraintWithLoc,
-                             {{I.getCondition(), true},
-                              {I.getCondition(), false},
-                              {getTargetPreferredInt(&I), false},
-                              {filenameVal, false},
-                              {lineVal, false},
-                              {slotVal, false}});
-        registerSymbolicComputation(runtimeCall);
-
-        PushIRB.CreateStore(PushIRB.getTrue(), LoopSeenFlag[&I]);
-        PushIRB.CreateBr(ContBB);
-
-        llvm::IRBuilder<> NoPushIRB(NoPushBB);
-        NoPushIRB.CreateBr(ContBB);
-
-        return;
       }
     }
   }

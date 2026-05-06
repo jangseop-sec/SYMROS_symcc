@@ -226,6 +226,7 @@ bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
   OverflowChecker checker(*F.getParent());
   checker.setSementicThreshold(100);
+  checker.setSementicTolerance(10);
 
   std::vector<Instruction *> allInstructions;
   for (auto &I : instructions(F)) {
@@ -243,6 +244,7 @@ bool FPOverflowCheckerLegacyPass::runOnFunction(Function &F) {
   errs() << "[FPOverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
   FPOverflowChecker checker(*F.getParent());
   checker.setSementicThreshold(100.0);
+  checker.setSementicTolerance(1e-5);
 
   std::vector<Instruction *> allInstructions;
 
