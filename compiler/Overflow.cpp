@@ -8,8 +8,8 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
       !I.getOperand(1)->getType()->isIntegerTy(32))
     return;
 
-  if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap())
-    return;
+  // if (I.hasNoSignedWrap() || I.hasNoUnsignedWrap())
+  //   return;
 
   if (I.getOpcode() != Instruction::Add && I.getOpcode() != Instruction::Sub &&
       I.getOpcode() != Instruction::Mul && I.getOpcode() != Instruction::UDiv &&
@@ -131,7 +131,7 @@ void OverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   IRBuilder<> IR5(MaxBoundCheckBB);
   Value *MaxBoundCond = getSementicMaxBoundCondition(I, IR5);
   BranchInst *MaxBoundCheckBranch =
-      IR5.CreateCondBr(MaxBoundCond, MinBoundCheckBB, MinBoundCheckBB);
+      IR5.CreateCondBr(MaxBoundCond, SignedMaxBoundCheckBB, SignedMaxBoundCheckBB);
 
   // set metadata
   MaxBoundCheckBranch->setMetadata(
@@ -369,16 +369,16 @@ Value *
 OverflowChecker::getSementicMaxBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
   Value *Result = &I;
 
-  APInt MaxValue = APInt::getMaxValue(Result->getType()->getIntegerBitWidth());
+  unsigned int max_value = 4294967294;
   return IRB.CreateICmpUGT(
-      Result, ConstantInt::get(Result->getType(), MaxValue - sementic_tolerance));
+      Result, ConstantInt::get(Result->getType(), max_value - sementic_tolerance));
 }
 
 Value *OverflowChecker::getSementicMinBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
   Value *Result = &I;
-  APInt MinValue = APInt::getMinValue(Result->getType()->getIntegerBitWidth());
+  // APInt MinValue = APInt::getMinValue(Result->getType()->getIntegerBitWidth());
   return IRB.CreateICmpULT(
-      Result, ConstantInt::get(Result->getType(), MinValue + sementic_tolerance));
+      Result, ConstantInt::get(Result->getType(), sementic_tolerance));
 }
 
 Value *OverflowChecker::getSementicSignedMaxBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
@@ -386,14 +386,14 @@ Value *OverflowChecker::getSementicSignedMaxBoundCondition(llvm::BinaryOperator 
 
   APInt SignedMaxValue = APInt::getSignedMaxValue(Result->getType()->getIntegerBitWidth());
   return IRB.CreateICmpSGT(
-      Result, ConstantInt::get(Result->getType(), SignedMaxValue - sementic_tolerance));
+      Result, ConstantInt::get(Result->getType(), 2147483646 - sementic_tolerance));
 }
 
 Value *OverflowChecker::getSementicSignedMinBoundCondition(llvm::BinaryOperator &I, llvm::IRBuilder<> &IRB) {
   Value *Result = &I;
   APInt SignedMinValue = APInt::getSignedMinValue(Result->getType()->getIntegerBitWidth());
   return IRB.CreateICmpSLT(
-      Result, ConstantInt::get(Result->getType(), SignedMinValue + sementic_tolerance));
+      Result, ConstantInt::get(Result->getType(), -2147483647 + sementic_tolerance));
 }
 
 
