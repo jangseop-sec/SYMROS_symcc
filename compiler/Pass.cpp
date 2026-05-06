@@ -225,7 +225,7 @@ bool OverflowCheckerLegacyPass::runOnFunction(Function &F) {
   // OverflowChecker checker;
   errs() << "[OverflowCheckerLegacyPass] visiting function: " << F.getName() << "\n";
   OverflowChecker checker(*F.getParent());
-  checker.setSementicThreshold(100);
+  checker.setSementicThreshold(10);
   checker.setSementicTolerance(10);
 
   std::vector<Instruction *> allInstructions;
