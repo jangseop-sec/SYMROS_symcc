@@ -88,7 +88,7 @@ void FPOverflowChecker::visitBinaryOperator(BinaryOperator &I) {
   Value *DividedByZeroCond = getDividedByZeroCondition(I, IR3, is_div);
 
   BranchInst *DividedByZeroCheckBranch =
-      IR3.CreateCondBr(DividedByZeroCond, MinusBoundCheckBB, MinBoundCheckBB);
+      IR3.CreateCondBr(DividedByZeroCond, MinusBoundCheckBB, MinusBoundCheckBB);
 
   // set metadata
   DividedByZeroCheckBranch->setMetadata(
@@ -224,4 +224,8 @@ Value *FPOverflowChecker::getSementicToleranceCondition(llvm::BinaryOperator &I,
 
 void FPOverflowChecker::setSementicThreshold(double sementic_threshold) {
   this->sementic_threshold = sementic_threshold;
+}
+
+void FPOverflowChecker::setSementicTolerance(double sementic_tolerance) {
+  this->sementic_tolerance = sementic_tolerance;
 }
