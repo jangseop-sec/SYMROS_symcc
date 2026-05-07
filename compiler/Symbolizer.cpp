@@ -192,9 +192,9 @@ void Symbolizer::handleIntrinsicCall(CallBase &I) {
   case Intrinsic::memcpy: {
     IRBuilder<> IRB(&I);
 
-    tryAlternative(IRB, I.getOperand(0), I);
-    tryAlternative(IRB, I.getOperand(1), I);
-    tryAlternative(IRB, I.getOperand(2), I);
+    // tryAlternative(IRB, I.getOperand(0), I);
+    // tryAlternative(IRB, I.getOperand(1), I);
+    // tryAlternative(IRB, I.getOperand(2), I);
 
     // The intrinsic allows both 32 and 64-bit integers to specify the length;
     // convert to the right type if necessary. This may truncate the value on
@@ -209,8 +209,8 @@ void Symbolizer::handleIntrinsicCall(CallBase &I) {
   case Intrinsic::memset: {
     IRBuilder<> IRB(&I);
 
-    tryAlternative(IRB, I.getOperand(0), I);
-    tryAlternative(IRB, I.getOperand(2), I);
+    // tryAlternative(IRB, I.getOperand(0), I);
+    // tryAlternative(IRB, I.getOperand(2), I);
 
     // The comment on memcpy's length parameter applies analogously.
 
@@ -223,9 +223,9 @@ void Symbolizer::handleIntrinsicCall(CallBase &I) {
   case Intrinsic::memmove: {
     IRBuilder<> IRB(&I);
 
-    tryAlternative(IRB, I.getOperand(0), I);
-    tryAlternative(IRB, I.getOperand(1), I);
-    tryAlternative(IRB, I.getOperand(2), I);
+    // tryAlternative(IRB, I.getOperand(0), I);
+    // tryAlternative(IRB, I.getOperand(1), I);
+    // tryAlternative(IRB, I.getOperand(2), I);
 
     // The comment on memcpy's length parameter applies analogously.
 
@@ -373,8 +373,8 @@ void Symbolizer::handleFunctionCall(CallBase &I, Instruction *returnPoint) {
   IRB.SetInsertPoint(&I);
   IRB.CreateCall(runtime.notifyCall, getTargetPreferredInt(&I));
 
-  if (callee == nullptr)
-    tryAlternative(IRB, I.getCalledOperand(), I);
+  // if (callee == nullptr)
+    // tryAlternative(IRB, I.getCalledOperand(), I);
 
   for (Use &arg : I.args())
     IRB.CreateCall(runtime.setParameterExpression,
@@ -683,7 +683,7 @@ void Symbolizer::visitBranchInst(BranchInst &I) {
 
 void Symbolizer::visitIndirectBrInst(IndirectBrInst &I) {
   IRBuilder<> IRB(&I);
-  tryAlternative(IRB, I.getAddress(), I);
+  // tryAlternative(IRB, I.getAddress(), I);
 }
 
 void Symbolizer::visitCallInst(CallInst &I) {
@@ -714,7 +714,7 @@ void Symbolizer::visitLoadInst(LoadInst &I) {
   IRBuilder<> IRB(&I);
 
   auto *addr = I.getPointerOperand();
-  tryAlternative(IRB, addr, I);
+  // tryAlternative(IRB, addr, I);
 
   auto *dataType = I.getType();
   auto *data = IRB.CreateCall(
@@ -729,7 +729,7 @@ void Symbolizer::visitLoadInst(LoadInst &I) {
 void Symbolizer::visitStoreInst(StoreInst &I) {
   IRBuilder<> IRB(&I);
 
-  tryAlternative(IRB, I.getPointerOperand(), I);
+  // tryAlternative(IRB, I.getPointerOperand(), I);
 
   // Make sure that the expression corresponding to the stored value is of
   // bit-vector kind. Shortcutting the runtime calls that we emit here (e.g.,
@@ -1295,42 +1295,42 @@ Symbolizer::SymbolicComputation Symbolizer::forceBuildRuntimeCall(
   return SymbolicComputation(call, call, inputs);
 }
 
-void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
-  auto *destExpr = getSymbolicExpression(V);
-  if (destExpr != nullptr) {
-    auto *concreteDestExpr = createValueExpression(V, IRB);
-    auto *destAssertion =
-        IRB.CreateCall(runtime.comparisonHandlers[CmpInst::ICMP_EQ],
-                       {destExpr, concreteDestExpr});
+// void Symbolizer::tryAlternative(IRBuilder<> &IRB, Value *V, Instruction &I) {
+  // auto *destExpr = getSymbolicExpression(V);
+  // if (destExpr != nullptr) {
+  //   auto *concreteDestExpr = createValueExpression(V, IRB);
+  //   auto *destAssertion =
+  //       IRB.CreateCall(runtime.comparisonHandlers[CmpInst::ICMP_EQ],
+  //                      {destExpr, concreteDestExpr});
 
-    // locate the instruction
-    std::string filename;
-    int Line = -1;
+  //   // locate the instruction
+  //   std::string filename;
+  //   int Line = -1;
 
-    if (auto DL = I.getDebugLoc()) {
-      if (auto Loc = DL.get()) {
-        while (Loc && Loc->getInlinedAt()) {
-          Loc = Loc->getInlinedAt();
-        }
+  //   if (auto DL = I.getDebugLoc()) {
+  //     if (auto Loc = DL.get()) {
+  //       while (Loc && Loc->getInlinedAt()) {
+  //         Loc = Loc->getInlinedAt();
+  //       }
 
-        filename = Loc->getFilename().str();
-        Line = Loc->getLine();
-      }
-    }
-    llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
-    llvm::Value *lineVal = IRB.getInt32(Line);
+  //       filename = Loc->getFilename().str();
+  //       Line = Loc->getLine();
+  //     }
+  //   }
+  //   llvm::Value *filenameVal = IRB.CreateGlobalStringPtr(filename);
+  //   llvm::Value *lineVal = IRB.getInt32(Line);
 
-    int slot = ID++;
-    llvm::Value *slotVal = IRB.getInt32(slot);
+  //   int slot = ID++;
+  //   llvm::Value *slotVal = IRB.getInt32(slot);
 
-    auto *pushAssertion = IRB.CreateCall(runtime.pushPathConstraintWithLoc,
-                                         {destAssertion, IRB.getInt1(true),
-                                          getTargetPreferredInt(V), filenameVal,
-                                          lineVal, slotVal});
-    registerSymbolicComputation(SymbolicComputation(
-        concreteDestExpr, pushAssertion, {Input(V, 0, destAssertion)}));
-  }
-}
+  //   auto *pushAssertion = IRB.CreateCall(runtime.pushPathConstraintWithLoc,
+  //                                        {destAssertion, IRB.getInt1(true),
+  //                                         getTargetPreferredInt(V), filenameVal,
+  //                                         lineVal, slotVal});
+  //   registerSymbolicComputation(SymbolicComputation(
+  //       concreteDestExpr, pushAssertion, {Input(V, 0, destAssertion)}));
+  // }
+// }
 
 uint64_t Symbolizer::aggregateMemberOffset(Type *aggregateType,
                                            ArrayRef<unsigned> indices) const {
